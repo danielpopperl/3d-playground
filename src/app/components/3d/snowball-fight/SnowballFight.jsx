@@ -11,15 +11,18 @@ import * as THREE from "three";
 
 export default function SnowballFight() {
   const playerRef = useRef();
-  const playerPosRef = useRef();
-  const cameraRef = useRef(new THREE.Vector3());
-  const cameraLookAt = useRef(new THREE.Vector3());
 
-  let position = new THREE.Vector3();
-  let rotation = new THREE.Quaternion();
-  let abc = new THREE.Vector3();
+  let updatedCameraPos = new THREE.Vector3();
 
   const [_, get] = useKeyboardControls();
+
+  function updateCamera() {
+    const position = new THREE.Vector3(-2, 5, 5);
+    position.applyQuaternion(quat(playerRef.current.rotation()));
+    position.add(vec3(playerRef.current.translation()));
+
+    return position;
+  }
 
   useFrame(({ camera }) => {
     if (playerRef.current) {
@@ -34,16 +37,11 @@ export default function SnowballFight() {
       } else if (get().jump) {
         playerRef.current.applyImpulse({ x: 0, y: 1, z: 0 }, true);
       }
-
-      position = vec3(playerRef.current.translation());
-      rotation = quat(playerRef.current.rotation());
-      abc = position.applyQuaternion(rotation);
-
-      console.log(abc.x);
-
-      camera.position.copy(abc);
-      camera.lookAt(abc.x, abc.y, abc.z);
     }
+
+    updatedCameraPos = updateCamera();
+    camera.position.copy(updatedCameraPos);
+    camera.lookAt(updatedCameraPos);
   });
 
   return (
