@@ -13,11 +13,20 @@ export default function SnowballFight() {
   const playerRef = useRef();
 
   let updatedCameraPos = new THREE.Vector3();
+  let updatedCameraLook = new THREE.Vector3();
 
   const [_, get] = useKeyboardControls();
 
   function updateCamera() {
     const position = new THREE.Vector3(-2, 5, 5);
+    position.applyQuaternion(quat(playerRef.current.rotation()));
+    position.add(vec3(playerRef.current.translation()));
+
+    return position;
+  }
+
+  function updateCameraLooktAt() {
+    const position = new THREE.Vector3(0, 10, 5);
     position.applyQuaternion(quat(playerRef.current.rotation()));
     position.add(vec3(playerRef.current.translation()));
 
@@ -40,14 +49,17 @@ export default function SnowballFight() {
     }
 
     updatedCameraPos = updateCamera();
+    updatedCameraLook = updateCameraLooktAt();
+
     camera.position.copy(updatedCameraPos);
-    camera.lookAt(updatedCameraPos);
+    camera.lookAt(updatedCameraLook);
   });
 
   return (
     <group>
       <PerspectiveCamera aspect={1920 / 1080} fov={60} position={[0, 5, 0]} />
 
+      {/* GROUND */}
       <group name="base" rotation={[-Math.PI * 0.5, 0, 0]}>
         <RigidBody type="fixed">
           <Box args={[50, 50, 1]}>
@@ -56,6 +68,7 @@ export default function SnowballFight() {
         </RigidBody>
       </group>
 
+      {/* PLAYER */}
       <RigidBody
         ref={playerRef}
         type="dynamic"
