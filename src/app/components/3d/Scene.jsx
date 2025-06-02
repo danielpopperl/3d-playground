@@ -7,8 +7,9 @@ import {
 } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
-import { Suspense, useMemo, useRef } from "react";
+import { Suspense, useMemo, useRef, useState } from "react";
 import SnowballFight from "./snowball-fight/SnowballFight";
+import Ground from "./snowball-fight/Ground";
 
 export default function Scene() {
   const camRef = useRef();
@@ -34,17 +35,25 @@ export default function Scene() {
 
   return (
     <KeyboardControls map={mapControls}>
-      <Canvas>
+      <Canvas
+        onCreated={({ gl }) => {
+          gl.domElement.setAttribute('tabIndex', '0'); // required for focus
+          gl.domElement.focus();
+        }}>
         <Suspense fallback={null}>
-          <OrbitControls ref={camRef} />
 
-          <Physics debug>
+          <OrbitControls ref={camRef} />
+          
+          <Physics timeStep="vary">
+            <Ground />
+
             <SnowballFight />
           </Physics>
 
           <Environment preset="studio" />
+
         </Suspense>
       </Canvas>
     </KeyboardControls>
   );
-}
+} 

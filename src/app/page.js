@@ -1,14 +1,14 @@
 import dynamic from "next/dynamic";
 
-const Scene = dynamic(() => import("./components/3d/scene"), {
+const Scene = dynamic(() => import("./components/3d/Scene"), {
   ssr: !!false,
   loading: () => <p>Loading...</p>,
 });
 
-export default function Home() {
+export default function App() {
   return (
-    <div className="w-full h-full bg-black">
+    <main className="w-full h-full bg-black">
       <Scene />
-    </div>
+    </main>
   );
 }

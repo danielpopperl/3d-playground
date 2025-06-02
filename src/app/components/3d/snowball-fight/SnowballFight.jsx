@@ -1,86 +1,165 @@
 import {
-  Box,
+  OrthographicCamera,
   PerspectiveCamera,
-  Sphere,
   useKeyboardControls,
 } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { quat, RigidBody, vec3 } from "@react-three/rapier";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
 export default function SnowballFight() {
   const playerRef = useRef();
+  const meshRef = useRef();
+  const yaw = useRef(0)
+  const pitch = useRef(0)
 
-  let updatedCameraPos = new THREE.Vector3();
-  let updatedCameraLook = new THREE.Vector3();
+  const [isLocked, setIsLocked] = useState(false)
 
   const [_, get] = useKeyboardControls();
+  const { camera, gl } = useThree()
 
-  function updateCamera() {
-    const position = new THREE.Vector3(-2, 5, 5);
-    position.applyQuaternion(quat(playerRef.current.rotation()));
-    position.add(vec3(playerRef.current.translation()));
+  const speed = 50;
+  const moveSpeed = 100;
+  const maxSpeed = 100;
 
-    return position;
-  }
+  useFrame(({ camera }, delta) => {
+    if (!playerRef.current) return;
 
-  function updateCameraLooktAt() {
-    const position = new THREE.Vector3(0, 10, 5);
-    position.applyQuaternion(quat(playerRef.current.rotation()));
-    position.add(vec3(playerRef.current.translation()));
+    // Move Player
+    let moveX = 0, moveZ = 0, moveY = 0;
 
-    return position;
-  }
+    let currentVel = playerRef.current.linvel();
 
-  useFrame(({ camera }) => {
-    if (playerRef.current) {
-      if (get().forward) {
-        playerRef.current.applyImpulse({ x: 0, y: 0, z: -1 }, true);
-      } else if (get().backward) {
-        playerRef.current.applyImpulse({ x: 0, y: 0, z: 1 }, true);
-      } else if (get().left) {
-        playerRef.current.applyImpulse({ x: -1, y: 0, z: 0 }, true);
-      } else if (get().right) {
-        playerRef.current.applyImpulse({ x: 1, y: 0, z: 0 }, true);
-      } else if (get().jump) {
-        playerRef.current.applyImpulse({ x: 0, y: 1, z: 0 }, true);
+    if (Math.abs(currentVel.y) < 0.005) {
+      if (get().forward) moveZ -= 1;
+      if (get().backward) moveZ += 1;
+      if (get().left) moveX -= 1;
+      if (get().right) moveX += 1;
+      if (get().jump) moveY = 50;
+    }
+
+    // Create a direction vector from input
+    const moveVector = new THREE.Vector3(moveX, 0, moveZ);
+
+    if (moveVector.lengthSq() > 0) {
+      moveVector.normalize();
+
+      // Dummy object to build quaternion from yaw + pitch
+      const dummy = new THREE.Object3D();
+      dummy.rotation.order = 'YXZ';
+      dummy.rotation.y = yaw.current;
+      dummy.rotation.x = 0; // yaw only affects movement, not pitch
+
+      // Rotate move vector by yaw
+      moveVector.applyQuaternion(dummy.quaternion);
+      moveVector.y = 0;
+      moveVector.normalize();
+
+      if (meshRef.current) {
+        meshRef.current.rotation.y = yaw.current;
+        // Optional: also apply pitch for vertical tilt
+        // meshRef.current.rotation.x = pitch.current;
+      }
+
+      const horizontalVel = new THREE.Vector3(currentVel.x, 0, currentVel.z);
+
+      if (horizontalVel.length() < maxSpeed) {
+        // FIX 2: Use setLinvel instead of applyImpulse for smoother movement
+        const targetVelX = currentVel.x + moveVector.x * moveSpeed * delta;
+        const targetVelZ = currentVel.z + moveVector.z * moveSpeed * delta;
+
+        playerRef.current.setLinvel({
+          x: Math.max(-maxSpeed, Math.min(maxSpeed, targetVelX)),
+          y: currentVel.y + moveY,
+          z: Math.max(-maxSpeed, Math.min(maxSpeed, targetVelZ))
+        }, true);
+      }
+    } else {
+      // Still apply rotation even when not moving
+      if (meshRef.current) {
+        meshRef.current.rotation.y = yaw.current;
+        // meshRef.current.rotation.x = pitch.current;
       }
     }
 
-    updatedCameraPos = updateCamera();
-    updatedCameraLook = updateCameraLooktAt();
-
-    camera.position.copy(updatedCameraPos);
-    camera.lookAt(updatedCameraLook);
+    updateCamera(camera)
   });
+
+
+  function updateCamera(camera) {
+    if (!playerRef.current) return;
+
+    const playerPos = vec3(playerRef.current.translation());
+
+    // Camera rotation
+    camera.rotation.order = 'YXZ';
+    camera.rotation.y = yaw.current;
+    camera.rotation.x = pitch.current;
+
+    // FIX 5: First-person camera (no offset) to eliminate following issues
+    // For first-person, camera should BE the player position
+    camera.position.set(
+      playerPos.x,
+      playerPos.y + 1.7, // Eye level height
+      playerPos.z
+    );
+
+    // No lookAt needed for first-person - rotation handles direction
+  }
+
+
+  useEffect(() => {
+    const handleMouseMove = (event) => {
+      if (!isLocked) return;
+
+      yaw.current -= event.movementX * 0.002;
+      pitch.current -= event.movementY * 0.002;
+      pitch.current = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch.current));
+    };
+
+    const handlePointerLockChange = () => {
+      const locked = document.pointerLockElement === gl.domElement;
+      setIsLocked(locked);
+      console.log("Pointer lock active:", locked);
+    };
+
+    const handleClick = () => {
+      gl.domElement.requestPointerLock();
+      gl.domElement.focus(); // ensure canvas has keyboard focus
+    };
+
+    gl.domElement.addEventListener('click', handleClick);
+    document.addEventListener('pointerlockchange', handlePointerLockChange);
+    document.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      gl.domElement.removeEventListener('click', handleClick);
+      document.removeEventListener('pointerlockchange', handlePointerLockChange);
+      document.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [gl, isLocked]);
 
   return (
     <group>
-      <PerspectiveCamera aspect={1920 / 1080} fov={60} position={[0, 5, 0]} />
-
-      {/* GROUND */}
-      <group name="base" rotation={[-Math.PI * 0.5, 0, 0]}>
-        <RigidBody type="fixed">
-          <Box args={[50, 50, 1]}>
-            <meshStandardMaterial side={2} color="red" />
-          </Box>
-        </RigidBody>
-      </group>
+      <OrthographicCamera fov={70} position={[0, 0, 0]} />
 
       {/* PLAYER */}
       <RigidBody
         ref={playerRef}
+        position={[0, 2, 0]}
         type="dynamic"
-        colliders="ball"
+        colliders={"hull"}
         lockRotations
-        friction={1}
+        linearDamping={0.4}
+        angularDamping={0.4}
+        friction={7} // Aderência ao chão
+        restitution={0.0} // Sem bounce
       >
-        <group name="player" position={[0, 1, 0]}>
-          <Sphere args={[1]}>
-            <meshBasicMaterial color="green" />
-          </Sphere>
-        </group>
+        <mesh ref={meshRef}>
+          <boxGeometry args={[1, 1, 2]} />
+          <meshBasicMaterial color="green" />
+        </mesh>
       </RigidBody>
     </group>
   );
