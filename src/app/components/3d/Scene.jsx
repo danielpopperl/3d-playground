@@ -1,19 +1,13 @@
 "use client";
 
-import {
-  Environment,
-  KeyboardControls,
-  OrbitControls,
-} from "@react-three/drei";
+import { Environment, KeyboardControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
-import { Suspense, useMemo, useRef, useState } from "react";
-import SnowballFight from "./snowball-fight/SnowballFight";
+import { Suspense, useMemo } from "react";
 import Ground from "./snowball-fight/Ground";
+import SnowballFight from "./snowball-fight/SnowballFight";
 
 export default function Scene() {
-  const camRef = useRef();
-
   const controls = {
     forward: "forward",
     backward: "backward",
@@ -36,24 +30,24 @@ export default function Scene() {
   return (
     <KeyboardControls map={mapControls}>
       <Canvas
+        camera={[0, 5, 0]}
         onCreated={({ gl }) => {
-          gl.domElement.setAttribute('tabIndex', '0'); // required for focus
+          gl.domElement.setAttribute("tabIndex", "0"); // required for focus
           gl.domElement.focus();
-        }}>
+        }}
+      >
         <Suspense fallback={null}>
+          {/* <OrbitControls ref={camRef} /> */}
 
-          <OrbitControls ref={camRef} />
-          
-          <Physics timeStep="vary">
+          <Physics timeStep={"vary"} gravity={[0, -30, 0]} debug>
             <Ground />
 
             <SnowballFight />
           </Physics>
 
           <Environment preset="studio" />
-
         </Suspense>
       </Canvas>
     </KeyboardControls>
   );
-} 
+}

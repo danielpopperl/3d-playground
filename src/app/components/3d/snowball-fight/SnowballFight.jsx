@@ -1,166 +1,226 @@
-import {
-  OrthographicCamera,
-  PerspectiveCamera,
-  useKeyboardControls,
-} from "@react-three/drei";
+import { useKeyboardControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { quat, RigidBody, vec3 } from "@react-three/rapier";
+import { CuboidCollider, RigidBody, useRapier } from "@react-three/rapier";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
 export default function SnowballFight() {
   const playerRef = useRef();
   const meshRef = useRef();
-  const yaw = useRef(0)
-  const pitch = useRef(0)
+  const mouseYaw = useRef(0);
+  const mousePitch = useRef(0);
 
-  const [isLocked, setIsLocked] = useState(false)
+  const [jumped, setJumped] = useState(false);
+  const [pointerLocked, setPointerLocked] = useState(false);
+  const [collision, setCollision] = useState(false);
 
-  const [_, get] = useKeyboardControls();
-  const { camera, gl } = useThree()
+  const { gl } = useThree();
+  const { rapier, world } = useRapier();
+  const [subscriberKeys, getKeys] = useKeyboardControls();
 
-  const speed = 50;
-  const moveSpeed = 100;
-  const maxSpeed = 100;
+  // SMOOTH CAMERA MOVEMENT
+  const [smoothedCameraPosition] = useState(
+    () => new THREE.Vector3(10, 10, 10)
+  );
+  const [smoothedCameraTarget] = useState(() => new THREE.Vector3());
+
+  // OBJECT VARIABLES
+  const speed = 100;
+  const maxSpeed = 20;
+
+  const jump = () => {
+    const origin = playerRef.current.translation();
+    origin.y -= 0.89;
+    const direction = { x: 0, y: -1, z: 0 };
+    const ray = new rapier.Ray(origin, direction);
+    const hit = world.castRay(ray, 10, true);
+
+    if (hit && hit.timeOfImpact <= 0.1) {
+      playerRef.current.setLinvel({ x: 0, y: 10, z: 0 });
+    }
+  };
 
   useFrame(({ camera }, delta) => {
     if (!playerRef.current) return;
 
-    // Move Player
-    let moveX = 0, moveZ = 0, moveY = 0;
+    const impulse = { x: 0, y: 0, z: 0 };
+    const impulseStrength = 1;
 
-    let currentVel = playerRef.current.linvel();
+    // const origin = playerRef.current.translation();
+    // const direction = { x: 0, y: 0, z: 0 };
+    // const ray = new rapier.Ray(origin, direction);
+    // const hit = world.castRay(ray, 10, false);
+    // console.log(hit);
 
-    if (Math.abs(currentVel.y) < 0.005) {
-      if (get().forward) moveZ -= 1;
-      if (get().backward) moveZ += 1;
-      if (get().left) moveX -= 1;
-      if (get().right) moveX += 1;
-      if (get().jump) moveY = 50;
+    // CONTROLS
+    const { forward, backward, left, right } = getKeys();
+
+    // READ PLAYER'S LINEAR VELOCITY
+    const currentPlayerVelocity = playerRef.current.linvel();
+
+    if (forward) {
+      impulse.z -= impulseStrength;
+    }
+    if (backward) {
+      impulse.z += impulseStrength;
+    }
+    if (left) {
+      impulse.x -= impulseStrength;
+    }
+    if (right) {
+      impulse.x += impulseStrength;
     }
 
-    // Create a direction vector from input
-    const moveVector = new THREE.Vector3(moveX, 0, moveZ);
+    const moveVector = new THREE.Vector3(impulse.x, 0, impulse.z);
 
-    if (moveVector.lengthSq() > 0) {
+    if (moveVector.lengthSq() == 1) {
       moveVector.normalize();
 
-      // Dummy object to build quaternion from yaw + pitch
       const dummy = new THREE.Object3D();
-      dummy.rotation.order = 'YXZ';
-      dummy.rotation.y = yaw.current;
+      dummy.rotation.order = "YXZ";
+      dummy.rotation.y = mouseYaw.current;
       dummy.rotation.x = 0; // yaw only affects movement, not pitch
 
-      // Rotate move vector by yaw
       moveVector.applyQuaternion(dummy.quaternion);
       moveVector.y = 0;
       moveVector.normalize();
 
-      if (meshRef.current) {
-        meshRef.current.rotation.y = yaw.current;
-        // Optional: also apply pitch for vertical tilt
-        // meshRef.current.rotation.x = pitch.current;
-      }
+      if (meshRef.current) meshRef.current.rotation.y = mouseYaw.current; // set player (mesh) rotation same as camera rotation
 
-      const horizontalVel = new THREE.Vector3(currentVel.x, 0, currentVel.z);
+      const horizontalVel = new THREE.Vector3(
+        currentPlayerVelocity.x,
+        0,
+        currentPlayerVelocity.z
+      );
 
       if (horizontalVel.length() < maxSpeed) {
-        // FIX 2: Use setLinvel instead of applyImpulse for smoother movement
-        const targetVelX = currentVel.x + moveVector.x * moveSpeed * delta;
-        const targetVelZ = currentVel.z + moveVector.z * moveSpeed * delta;
+        const targetVelX =
+          currentPlayerVelocity.x + moveVector.x * speed * delta;
+        const targetVelZ =
+          currentPlayerVelocity.z + moveVector.z * speed * delta;
+        const targetVelY = currentPlayerVelocity.y + moveVector.y * delta;
 
-        playerRef.current.setLinvel({
-          x: Math.max(-maxSpeed, Math.min(maxSpeed, targetVelX)),
-          y: currentVel.y + moveY,
-          z: Math.max(-maxSpeed, Math.min(maxSpeed, targetVelZ))
-        }, true);
+        playerRef.current.setLinvel(
+          {
+            x: Math.max(-maxSpeed, Math.min(maxSpeed, targetVelX)),
+            y: Math.max(-maxSpeed, Math.min(maxSpeed, targetVelY)),
+            z: Math.max(-maxSpeed, Math.min(maxSpeed, targetVelZ)),
+          },
+          true
+        );
       }
     } else {
-      // Still apply rotation even when not moving
-      if (meshRef.current) {
-        meshRef.current.rotation.y = yaw.current;
-        // meshRef.current.rotation.x = pitch.current;
-      }
+      if (meshRef.current) meshRef.current.rotation.y = mouseYaw.current; // set player (mesh) rotation same as camera rotation
     }
 
-    updateCamera(camera)
+    // playerRef.current.setLinvel(
+    //   {
+    //     x: impulse.x,
+    //     y: currentPlayerVelocity.y,
+    //     z: impulse.z,
+    //   },
+    //   true
+    // );
+
+    // CAMERA
+
+    // const playerCam = new THREE.Vector3(); // write player position to playerCam and add y and z
+    // playerCam.copy(playerPos);
+    // playerCam.y += 2;
+    // playerCam.z += 5;
+
+    // const cameraTarget = new THREE.Vector3();
+    // cameraTarget.copy(playerPos);
+    // cameraTarget.y += 2;
+
+    // smoothedCameraPosition.lerp(playerCam, 10 * delta);
+    // smoothedCameraTarget.lerp(cameraTarget, 5 * delta);
+
+    // camera.position.copy(playerCam); // write playerCam to threejs camera
+    // camera.lookAt(cameraTarget); // set threejs camera to look at new coordinates
+
+    updateCamera(camera);
   });
 
-
   function updateCamera(camera) {
-    if (!playerRef.current) return;
+    const playerPosNew = playerRef.current.translation(); // read player position
 
-    const playerPos = vec3(playerRef.current.translation());
+    // ROTATIO CAMERA BY MOUSE MOVEMENT
+    camera.rotation.order = "YXZ";
+    camera.rotation.y = mouseYaw.current;
+    camera.rotation.x = mousePitch.current;
 
-    // Camera rotation
-    camera.rotation.order = 'YXZ';
-    camera.rotation.y = yaw.current;
-    camera.rotation.x = pitch.current;
-
-    // FIX 5: First-person camera (no offset) to eliminate following issues
-    // For first-person, camera should BE the player position
     camera.position.set(
-      playerPos.x,
-      playerPos.y + 1.7, // Eye level height
-      playerPos.z
+      playerPosNew.x,
+      playerPosNew.y + 1.7,
+      playerPosNew.z + 5
     );
-
-    // No lookAt needed for first-person - rotation handles direction
   }
 
-
   useEffect(() => {
-    const handleMouseMove = (event) => {
-      if (!isLocked) return;
+    const unsubscribeJump = subscriberKeys(
+      (state) => {
+        return state.jump;
+      },
+      (value) => {
+        if (value) {
+          jump();
+        }
+      }
+    );
 
-      yaw.current -= event.movementX * 0.002;
-      pitch.current -= event.movementY * 0.002;
-      pitch.current = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch.current));
+    const handleClick = () => {
+      gl.domElement.requestPointerLock();
     };
 
     const handlePointerLockChange = () => {
       const locked = document.pointerLockElement === gl.domElement;
-      setIsLocked(locked);
-      console.log("Pointer lock active:", locked);
+      setPointerLocked(locked);
     };
 
-    const handleClick = () => {
-      gl.domElement.requestPointerLock();
-      gl.domElement.focus(); // ensure canvas has keyboard focus
+    const handleMouseMove = (event) => {
+      mouseYaw.current -= event.movementX * 0.002;
+
+      mousePitch.current -= event.movementY * 0.002;
+      mousePitch.current = Math.max(
+        -Math.PI / 2,
+        Math.min(Math.PI / 2, mousePitch.current)
+      );
     };
 
-    gl.domElement.addEventListener('click', handleClick);
-    document.addEventListener('pointerlockchange', handlePointerLockChange);
-    document.addEventListener('mousemove', handleMouseMove);
+    gl.domElement.addEventListener("click", handleClick);
+    document.addEventListener("pointerlockchange", handlePointerLockChange);
+    document.addEventListener("mousemove", handleMouseMove);
 
-    return () => {
-      gl.domElement.removeEventListener('click', handleClick);
-      document.removeEventListener('pointerlockchange', handlePointerLockChange);
-      document.removeEventListener('mousemove', handleMouseMove);
-    };
-  }, [gl, isLocked]);
+    return () => unsubscribeJump();
+  }, [gl]);
 
   return (
-    <group>
-      <OrthographicCamera fov={70} position={[0, 0, 0]} />
+    //   {/* <OrthographicCamera fov={70} position={[0, 5, 10]} /> */}
 
-      {/* PLAYER */}
-      <RigidBody
-        ref={playerRef}
-        position={[0, 2, 0]}
-        type="dynamic"
-        colliders={"hull"}
-        lockRotations
-        linearDamping={0.4}
-        angularDamping={0.4}
-        friction={7} // Aderência ao chão
-        restitution={0.0} // Sem bounce
-      >
-        <mesh ref={meshRef}>
-          <boxGeometry args={[1, 1, 2]} />
-          <meshBasicMaterial color="green" />
-        </mesh>
-      </RigidBody>
-    </group>
+    <RigidBody
+      ref={playerRef}
+      position={[0, 0.5, 0]}
+      type="dynamic"
+      colliders={false}
+      lockRotations
+      linearDamping={0.1}
+      angularDamping={0.5}
+      friction={2} // Aderência ao chão
+      restitution={0} // Sem bounce
+      onCollisionEnter={({ target }) => {
+        setCollision(true);
+      }}
+      onCollisionExit={({ target }) => {
+        setCollision(false);
+      }}
+    >
+      <CuboidCollider args={[0.55, 0.55, 1]} />
+
+      <mesh ref={meshRef} castShadow receiveShadow>
+        <boxGeometry args={[1, 1, 2]} />
+        <meshPhysicalMaterial color="green" />
+      </mesh>
+    </RigidBody>
   );
 }
