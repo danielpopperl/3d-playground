@@ -39,7 +39,7 @@ export default function Scene() {
         <Suspense fallback={null}>
           {/* <OrbitControls ref={camRef} /> */}
 
-          <Physics timeStep={"vary"} gravity={[0, -30, 0]} debug>
+          <Physics timeStep={"vary"} gravity={[0, -45, 0]} debug>
             <Ground />
 
             <SnowballFight />
