@@ -19,7 +19,7 @@ export default function SnowballFight() {
     () => new THREE.Vector3(10, 10, 10)
   );
 
-  const { gl } = useThree();
+  const { camera, gl } = useThree();
   const { rapier, world } = useRapier();
   const [subscriberKeys, getKeys] = useKeyboardControls();
 
@@ -121,20 +121,27 @@ export default function SnowballFight() {
   }
 
   const shot = () => {
-    if (playerRef.current) {
-      const playerPos = playerRef.current.translation();
-      // read player position
-      const direction = { x: playerPos.x, y: playerPos.y, z: -5 };
-      const ray = new rapier.Ray(origin, direction);
-      const hit = world.castRay(ray, 10, true);
+    const dummy = new THREE.Object3D();
+    dummy.rotation.order = "YXZ";
+    dummy.rotation.y = mouseYaw.current;
+    dummy.rotation.x = mousePitch.current; // yaw only affects movement, not pitch
 
-      const newBullet = {
-        id: Date.now(),
-        position: direction,
-      };
+    const origin = playerRef.current.translation();
+    const direction2 = new THREE.Vector3();
+    camera.getWorldDirection(direction2);
 
-      setBullets((prev) => [...prev, newBullet]);
-    }
+    const direction = { x: direction2.x, y: direction2.y };
+
+    const ray = new rapier.Ray(origin, direction2);
+    const hit = world.castRay(ray, 100, false);
+    console.log(hit.collider.);
+
+    const newBullet = {
+      id: Date.now(),
+      position: direction,
+    };
+
+    setBullets((prev) => [...prev, newBullet]);
   };
 
   const handleMouseDown = (event) => {
@@ -224,7 +231,7 @@ export default function SnowballFight() {
                 bullet.position.z,
               ]}
             >
-              <sphereGeometry args={[0.25, 16, 16]} />
+              <sphereGeometry args={[0.05, 16, 16]} />
               <meshBasicMaterial color="red" />
             </mesh>
           );
