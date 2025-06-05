@@ -31,3 +31,48 @@ input {
   caret-color: transparent;
   outline: 0;
 }
+
+.crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1001;
+}
+
+.crosshair::before,
+.crosshair::after {
+  content: '';
+  position: absolute;
+  background-color: #00ff00;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+/* Horizontal line */
+.crosshair::before {
+  width: 20px;
+  height: 2px;
+  top: -1px;
+  left: -10px;
+}
+
+/* Vertical line */
+.crosshair::after {
+  width: 2px;
+  height: 20px;
+  top: -10px;
+  left: -1px;
+}
+
+/* Center dot */
+.crosshair-dot {
+  width: 4px;
+  height: 4px;
+  background-color: #00ff00;
+  border-radius: 50%;
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  box-shadow: 0 0 5px rgba(0, 255, 0, 0.8);
+  z-index: 1001;
+}

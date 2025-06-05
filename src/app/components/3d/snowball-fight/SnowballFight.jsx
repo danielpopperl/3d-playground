@@ -1,6 +1,6 @@
 "use client";
 
-import { useKeyboardControls } from "@react-three/drei";
+import { OrthographicCamera, useKeyboardControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { CuboidCollider, RigidBody, useRapier } from "@react-three/rapier";
 import { useEffect, useRef, useState } from "react";
@@ -11,6 +11,7 @@ export default function SnowballFight() {
   const meshRef = useRef();
   const mouseYaw = useRef(0);
   const mousePitch = useRef(0);
+  const camRef = useRef();
 
   const [bullets, setBullets] = useState([]);
   const [pointerLocked, setPointerLocked] = useState(false);
@@ -19,25 +20,13 @@ export default function SnowballFight() {
     () => new THREE.Vector3(10, 10, 10)
   );
 
-  const { camera, gl } = useThree();
+  const { camera, gl, scene } = useThree();
   const { rapier, world } = useRapier();
   const [subscriberKeys, getKeys] = useKeyboardControls();
 
   // OBJECT VARIABLES
   const speed = 150;
   const maxSpeed = 30;
-
-  const jump = () => {
-    const origin = playerRef.current.translation();
-    origin.y -= 0.89;
-    const direction = { x: 0, y: -1, z: 0 };
-    const ray = new rapier.Ray(origin, direction);
-    const hit = world.castRay(ray, 10, true);
-
-    if (hit && hit.timeOfImpact <= 0.1) {
-      playerRef.current.setLinvel({ x: 0, y: 10, z: 0 });
-    }
-  };
 
   useFrame(({ camera }, delta) => {
     if (!playerRef.current) return;
@@ -109,6 +98,18 @@ export default function SnowballFight() {
     updateCamera(camera);
   });
 
+  const jump = () => {
+    const origin = playerRef.current.translation();
+    origin.y -= 0.89;
+    const direction = { x: 0, y: -1, z: 0 };
+    const ray = new rapier.Ray(origin, direction);
+    const hit = world.castRay(ray, 10, true);
+
+    if (hit && hit.timeOfImpact <= 0.1) {
+      playerRef.current.setLinvel({ x: 0, y: 10, z: 0 });
+    }
+  };
+
   function updateCamera(camera) {
     const playerPos = playerRef.current.translation(); // read player position
 
@@ -121,28 +122,87 @@ export default function SnowballFight() {
   }
 
   const shot = () => {
-    const dummy = new THREE.Object3D();
-    dummy.rotation.order = "YXZ";
-    dummy.rotation.y = mouseYaw.current;
-    dummy.rotation.x = mousePitch.current; // yaw only affects movement, not pitch
+  if (!playerRef.current) return;
 
-    const origin = playerRef.current.translation();
-    const direction2 = new THREE.Vector3();
-    camera.getWorldDirection(direction2);
+  // Get player position as starting point
+  const playerPos = playerRef.current.translation();
+  const startPosition = new THREE.Vector3(playerPos.x, playerPos.y, playerPos.z -3); // Eye level
 
-    const direction = { x: direction2.x, y: direction2.y };
+  // Method 3: Use raycaster for center screen (most accurate)
+  const raycaster = new THREE.Raycaster();
+  // Center of screen is (0, 0) in normalized device coordinates
+  const centerScreen = new THREE.Vector2(0, 0);
+  raycaster.setFromCamera(centerScreen, camera);
+  
+  // Get the direction from raycaster
+  const rayDirection = raycaster.ray.direction.clone();
+  
+  // Raycast to find hit point
+  const intersects = raycaster.intersectObjects(scene.children);
+  
+  let targetPosition;
+  if (intersects.length > 0) {
+    const npc = intersects.filter((mesh) => mesh.object.name == 'npc')
+    // Hit something - use hit point
+    if(npc) targetPosition = npc[0].point;
+  } else {
+    // No hit - project forward from camera
+    // targetPosition = startPosition.clone().add(rayDirection.multiplyScalar(1));
+  }
 
-    const ray = new rapier.Ray(origin, direction2);
-    const hit = world.castRay(ray, 100, false);
-    console.log(hit.collider.);
+  // console.log('Shooting at:', targetPosition);
 
-    const newBullet = {
-      id: Date.now(),
-      position: direction,
-    };
-
-    setBullets((prev) => [...prev, newBullet]);
+  // Create bullet
+  const newBullet = {
+    id: Date.now(),
+    position: {
+      x: targetPosition.x,
+      y: targetPosition.y,
+      z: targetPosition.z
+    },
+    // Store direction for animated bullets
+    direction: {
+      x: rayDirection.x,
+      y: rayDirection.y,
+      z: rayDirection.z
+    }
   };
+
+  setBullets((prev) => [...prev, newBullet]);
+};
+
+  // const shot = () => {
+  //   // const dummy = new THREE.Object3D();
+  //   // dummy.rotation.order = "YXZ";
+  //   // dummy.rotation.y = mouseYaw.current;
+  //   // dummy.rotation.x = mousePitch.current; // yaw only affects movement, not pitch
+
+  //   // const origin = playerRef.current.translation();
+  //   // const direction2 = new THREE.Vector3();
+  //   // camera.getWorldDirection(direction2);
+
+  //   // const direction = { x: direction2.x, y: direction2.y };
+
+  //   // const ray = new rapier.Ray(origin, direction2);
+  //   // const hit = world.castRay(ray, 100, false);
+  //   // console.log(hit.collider);
+
+  //   const playerPos = playerRef.current.translation();
+
+  //   // Calculate world position based on camera rotation
+  //   const distance = 2; // How far to place the point
+
+  //   const x = playerPos.x + Math.sin(-mouseYaw.current) * Math.cos(mousePitch.current);
+  //   const y = playerPos.y + 1.7 + Math.sin( mousePitch.current);
+  //   const z = playerPos.z - Math.cos(mouseYaw.current) * Math.cos(mousePitch.current);
+
+  //   const newBullet = {
+  //     id: Date.now(),
+  //     position: {x,y,z},
+  //   };
+
+  //   setBullets((prev) => [...prev, newBullet]);
+  // };
 
   const handleMouseDown = (event) => {
     if (!pointerLocked) {
@@ -199,7 +259,6 @@ export default function SnowballFight() {
   }, []);
 
   return (
-    //   {/* <OrthographicCamera fov={70} position={[0, 5, 10]} /> */}
 
     <group>
       <RigidBody
@@ -219,6 +278,12 @@ export default function SnowballFight() {
           <meshPhysicalMaterial color="green" />
         </mesh>
       </RigidBody>
+
+      <mesh castShadow receiveShadow position={[1, 1, 5]} name={"npc"}>
+        {/* <CuboidCollider args={[0.55, 0.55, 1]} /> */}
+        <boxGeometry args={[1, 2, 2]} />
+        <meshPhysicalMaterial color="green" />
+      </mesh>
 
       {bullets &&
         bullets.map((bullet, idx) => {
