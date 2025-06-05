@@ -1,6 +1,10 @@
 "use client";
 
-import { Environment, KeyboardControls } from "@react-three/drei";
+import {
+  Environment,
+  KeyboardControls,
+  OrthographicCamera,
+} from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
 import { Suspense, useMemo } from "react";
@@ -38,8 +42,10 @@ export default function Scene() {
       >
         <Suspense fallback={null}>
           {/* <OrbitControls ref={camRef} /> */}
+          <OrthographicCamera near={0.001} far={1000} />
 
           <Physics timeStep={"vary"} gravity={[0, -45, 0]} debug>
+            {/* <Physics timeStep={"vary"} debug> */}
             <Ground />
 
             <SnowballFight />
