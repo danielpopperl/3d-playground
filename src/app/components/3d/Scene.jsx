@@ -44,7 +44,13 @@ export default function Scene() {
           {/* <OrbitControls ref={camRef} /> */}
           <OrthographicCamera near={0.001} far={1000} />
 
-          <Physics timeStep={"vary"} gravity={[0, -45, 0]} debug>
+          <Physics
+            timeStep={"vary"}
+            gravity={[0, -45, 0]}
+            maxStabilizationIterations={10} // Increase for better stability
+            maxVelocityIterations={10} // Increase for better velocity resolution
+            debug
+          >
             {/* <Physics timeStep={"vary"} debug> */}
             <Ground />
 
@@ -54,6 +60,6 @@ export default function Scene() {
           <Environment preset="studio" />
         </Suspense>
       </Canvas>
-    </KeyboardControls>
+    </KeyboardControls >
   );
 }

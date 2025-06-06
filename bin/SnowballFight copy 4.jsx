@@ -16,7 +16,7 @@ export default function SnowballFight() {
   const meshRef = useRef();
   const mouseYaw = useRef(0);
   const mousePitch = useRef(0);
-  const bulletRef = useRef();
+  const bulletBody = useRef();
 
   const [bulletInstances, setBulletInstances] = useState([]);
   const [pointerLocked, setPointerLocked] = useState(false);
@@ -30,8 +30,8 @@ export default function SnowballFight() {
   const [subscriberKeys, getKeys] = useKeyboardControls();
 
   // OBJECT VARIABLES
-  const speed = 300;
-  const maxSpeed = 20;
+  const speed = 150;
+  const maxSpeed = 30;
 
   useFrame(({ camera }, delta) => {
     if (!playerRef.current) return;
@@ -81,7 +81,6 @@ export default function SnowballFight() {
       );
 
       if (horizontalVel.length() < maxSpeed) {
-        console.log(currentPlayerVelocity)
         const targetVelX =
           currentPlayerVelocity.x + moveVector.x * speed * delta;
         const targetVelZ =
@@ -128,46 +127,124 @@ export default function SnowballFight() {
   }
 
   const instances = useCallback(() => {
-    const mouse = new THREE.Vector2(0, 0);
+    if (!playerRef.current) return;
 
-    const ray = new THREE.Raycaster();
-    ray.setFromCamera(mouse, camera);
-
-    // Get player position for bullet spawn point
+    // Get player position as starting point
     const playerPos = playerRef.current.translation();
+    const startPosition = new THREE.Vector3(
+      playerPos.x,
+      playerPos.y,
+      playerPos.z
+    ); // Eye level
 
-    // Spawn bullet slightly in front of player at eye level
-    const spawnPos = [
-      playerPos.x + ray.ray.direction.x * 0.5, // Offset forward
-      playerPos.y + 1.7, // Eye level
-      playerPos.z + ray.ray.direction.z * 0.5  // Offset forward
-    ];
+    // Method 3: Use raycaster for center screen (most accurate)
+    const raycaster = new THREE.Raycaster();
+    // Center of screen is (0, 0) in normalized device coordinates
+    const centerScreen = new THREE.Vector2(0, 0);
 
-    // Use the ray direction for bullet velocity
-    const bulletSpeed = 0.1; // Adjust as needed
-    const impulse = {
-      x: ray.ray.direction.x * bulletSpeed,
-      y: ray.ray.direction.y * bulletSpeed,
-      z: ray.ray.direction.z * bulletSpeed,
-    };
+    raycaster.setFromCamera(centerScreen, camera);
+
+    // Get the direction from raycaster
+    const rayDirection = raycaster.ray.direction.clone();
+
+    // Raycast to find hit point
+    const intersects = raycaster.intersectObjects(scene.children);
+
+    let targetPosition = new THREE.Vector3(0, 0, 0);
+
+    // if (intersects.length > 0) {
+    //   const npc = intersects.filter((mesh) => {
+    //     return (
+    //       mesh.object.name === "npc" ||
+    //       (mesh.object.parent && mesh.object.parent.name === "npc")
+    //     );
+    //   });
+    //   // Hit something - use hit point
+    //   if (npc.length > 0) {
+    //     console.log(rayDirection);
+
+    //     targetPosition = [npc[0].point.x, npc[0].point.y, npc[0].point.z];
+    //     // targetPosition = rayDirection.clone();
+    //   }
+    // } else {
+    //   // No hit - project forward from camera
+    //   console.log(rayDirection.multiplyScalar(0))
+    //   startPosition.y += 2;
+    //   targetPosition = startPosition
+    //     .clone()
+    //     .add(rayDirection.multiplyScalar(0));
+    // }
+
+    console.log(rayDirection.multiplyScalar(1));
+    startPosition.y += 2;
+    targetPosition = startPosition.clone().add(rayDirection.multiplyScalar(1));
 
     const newInstance = {
-      key: Date.now() + Math.random(),
-      position: spawnPos,
+      key: "instance_" + Math.random(),
+      position: [targetPosition.x, targetPosition.y, targetPosition.z],
       rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      impulse: impulse
-    }
+    };
 
-    setBulletInstances((prev) => [...prev, newInstance])
+    setBulletInstances((prev) => {
+      const newArray = [...prev, newInstance];
+      return newArray;
+    });
 
-  }, [camera]);
+    // console.log('Shooting at:', targetPosition);
 
+    // Create bullet
+    // const newBullet = {
+    //   id: Date.now(),
+    //   position: {
+    //     x: targetPosition.x,
+    //     y: targetPosition.y,
+    //     z: targetPosition.z,
+    //   },
+    //   // Store direction for animated bullets
+    //   direction: {
+    //     x: rayDirection.x,
+    //     y: rayDirection.y,
+    //     z: rayDirection.z,
+    //   },
+    // };
+
+    // setBullets((prev) => [...prev, newBullet]);
+  }, [bulletInstances]);
+
+  // const shot = () => {
+  //   // const dummy = new THREE.Object3D();
+  //   // dummy.rotation.order = "YXZ";
+  //   // dummy.rotation.y = mouseYaw.current;
+  //   // dummy.rotation.x = mousePitch.current; // yaw only affects movement, not pitch
+
+  //   // const origin = playerRef.current.translation();
+  //   // const direction2 = new THREE.Vector3();
+  //   // camera.getWorldDirection(direction2);
+
+  //   // const direction = { x: direction2.x, y: direction2.y };
+
+  //   // const ray = new rapier.Ray(origin, direction2);
+  //   // const hit = world.castRay(ray, 100, false);
+  //   // console.log(hit.collider);
+
+  //   const playerPos = playerRef.current.translation();
+
+  //   // Calculate world position based on camera rotation
+  //   const distance = 2; // How far to place the point
+
+  //   const x = playerPos.x + Math.sin(-mouseYaw.current) * Math.cos(mousePitch.current);
+  //   const y = playerPos.y + 1.7 + Math.sin( mousePitch.current);
+  //   const z = playerPos.z - Math.cos(mouseYaw.current) * Math.cos(mousePitch.current);
+
+  //   const newBullet = {
+  //     id: Date.now(),
+  //     position: {x,y,z},
+  //   };
+
+  //   setBullets((prev) => [...prev, newBullet]);
+  // };
 
   const handleMouseDown = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-
     if (!pointerLocked) {
       gl.domElement.requestPointerLock();
     }
@@ -184,9 +261,6 @@ export default function SnowballFight() {
   };
 
   const handleMouseMove = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-
     mouseYaw.current -= event.movementX * 0.002;
 
     mousePitch.current -= event.movementY * 0.002;
@@ -225,14 +299,12 @@ export default function SnowballFight() {
   }, []);
 
   useEffect(() => {
-    if (bulletInstances.length <= 0) return
+    if (!bulletBody.current) return;
 
-    const lastBulletInstance = bulletInstances[bulletInstances.length - 1];
-    const lastBulletIndex = bulletInstances.length - 1;
-
-    setTimeout(() => {
-      bulletRef.current.at(lastBulletIndex).applyImpulse(lastBulletInstance.impulse, true)
-    }, 1)
+    bulletBody.current.map((api) => {
+      //   console.log(api);
+      api.applyImpulse({ x: 0, y: 0, z: 0.08 }, true);
+    });
   }, [bulletInstances]);
 
   return (
@@ -242,14 +314,14 @@ export default function SnowballFight() {
         position={[0, 0.5, 0]}
         type="dynamic"
         colliders={false}
-        enabledRotations={[false, false, false]}
+        lockRotations
         linearDamping={0.1}
         angularDamping={0.5}
         friction={5} // Aderência ao chão
         restitution={0} // Sem bounce
       >
+        <CuboidCollider args={[0.55, 0.55, 1]} />
         <mesh ref={meshRef} castShadow receiveShadow>
-          <CuboidCollider args={[0.55, 0.55, 1]} />
           <boxGeometry args={[1, 1, 2]} />
           <meshPhysicalMaterial color="green" />
         </mesh>
@@ -267,24 +339,37 @@ export default function SnowballFight() {
       >
         <mesh castShadow receiveShadow position={[1, 1, 5]} name={"npc"}>
           <CuboidCollider args={[0.55, 0.55, 1]} />
-          <boxGeometry args={[1, 1, 2]} />
+          <boxGeometry args={[1, 2, 2]} />
           <meshPhysicalMaterial color="green" />
         </mesh>
       </RigidBody>
+      {/* {bullets &&
+        bullets.map((bullet, idx) => {
+          return (
+            <mesh
+              key={idx}
+              position={[
+                bullet.position.x,
+                bullet.position.y,
+                bullet.position.z,
+              ]}
+            >
+              <sphereGeometry args={[0.05, 16, 16]} />
+              <meshBasicMaterial color="red" />
+            </mesh>
+          );
+        })} */}
 
-      {bulletInstances.length > 0 &&
-        <InstancedRigidBodies
-          ref={bulletRef}
-          instances={bulletInstances}
-          colliders="ball"
-          ccd={true}
-        >
-          <instancedMesh args={[undefined, undefined, 1000]} count={1000}>
-            <sphereGeometry args={[0.1, 16, 16]} />
-            <meshBasicMaterial color="red" side={2} />
-          </instancedMesh>
-        </InstancedRigidBodies>
-      }
+      <InstancedRigidBodies
+        ref={bulletBody}
+        instances={bulletInstances}
+        colliders="ball"
+      >
+        <instancedMesh args={[undefined, undefined, 1000]} count={1000}>
+          <sphereGeometry args={[0.1, 16, 16]} />
+          <meshBasicMaterial color="red" side={2} />
+        </instancedMesh>
+      </InstancedRigidBodies>
     </group>
   );
 }
