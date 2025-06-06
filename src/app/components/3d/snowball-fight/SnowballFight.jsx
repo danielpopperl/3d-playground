@@ -81,12 +81,13 @@ export default function SnowballFight() {
       );
 
       if (horizontalVel.length() < maxSpeed) {
-        console.log(currentPlayerVelocity)
         const targetVelX =
           currentPlayerVelocity.x + moveVector.x * speed * delta;
         const targetVelZ =
           currentPlayerVelocity.z + moveVector.z * speed * delta;
         const targetVelY = currentPlayerVelocity.y + moveVector.y * delta;
+
+        console.log(targetVelX)
 
         playerRef.current.setLinvel(
           {
@@ -145,11 +146,7 @@ export default function SnowballFight() {
 
     // Use the ray direction for bullet velocity
     const bulletSpeed = 0.1; // Adjust as needed
-    const impulse = {
-      x: ray.ray.direction.x * bulletSpeed,
-      y: ray.ray.direction.y * bulletSpeed,
-      z: ray.ray.direction.z * bulletSpeed,
-    };
+    const impulse = ray.ray.direction.multiplyScalar(bulletSpeed);
 
     const newInstance = {
       key: Date.now() + Math.random(),
@@ -207,13 +204,7 @@ export default function SnowballFight() {
         }
       }
     );
-
-    // const handleClick = () => {
-    //   console.log(2);
-    //   //   gl.domElement.requestPointerLock();
-    // };
-
-    // gl.domElement.addEventListener("click", handleClick);
+    
     document.addEventListener("pointerlockchange", handlePointerLockChange);
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mousedown", handleMouseDown);
