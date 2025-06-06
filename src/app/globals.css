@@ -76,3 +76,7 @@ input {
   box-shadow: 0 0 5px rgba(0, 255, 0, 0.8);
   z-index: 1001;
 }
+
+canvas {
+  pointer-events: auto !important;
+}

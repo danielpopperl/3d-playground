@@ -31,6 +31,10 @@ export default function Scene() {
     []
   );
 
+  const handleMouseDown = () => {
+    // console.log(99);
+  };
+
   return (
     <KeyboardControls map={mapControls}>
       <Canvas
@@ -39,6 +43,7 @@ export default function Scene() {
           gl.domElement.setAttribute("tabIndex", "0"); // required for focus
           gl.domElement.focus();
         }}
+        onMouseDown={handleMouseDown}
       >
         <Suspense fallback={null}>
           {/* <OrbitControls ref={camRef} /> */}
@@ -60,6 +65,6 @@ export default function Scene() {
           <Environment preset="studio" />
         </Suspense>
       </Canvas>
-    </KeyboardControls >
+    </KeyboardControls>
   );
 }
