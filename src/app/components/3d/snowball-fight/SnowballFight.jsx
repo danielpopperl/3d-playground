@@ -18,7 +18,11 @@ export default function SnowballFight() {
   const mouseYaw = useRef(0);
   const mousePitch = useRef(0);
   const bulletRef = useRef();
+  const fireIntervalRef = useRef(null);
 
+
+  const [isFiring, setIsFiring] = useState(false);
+  const [countSecBall, setCountSecBall] = useState(0);
   const [bulletInstances, setBulletInstances] = useState([]);
   const [pointerLocked, setPointerLocked] = useState(false);
   const [smoothedCameraTarget] = useState(() => new THREE.Vector3());
@@ -33,6 +37,8 @@ export default function SnowballFight() {
   // OBJECT VARIABLES
   const speed = 300;
   const maxSpeed = 20;
+  const fireRate = 10; // Adjust as needed
+  const fireInterval = 1000 / fireRate; // Convert to milliseconds
 
   const jump12 = () => {
     const origin = playerRef.current.translation();
@@ -146,8 +152,9 @@ export default function SnowballFight() {
       playerPos.z + ray.ray.direction.z * 1.5, // Offset forward
     ];
 
+
     // Use the ray direction for bullet velocity
-    const bulletSpeed = 0.1; // Adjust as needed
+    const bulletSpeed = 0.09; // Adjust as needed
     const impulse = ray.ray.direction.multiplyScalar(bulletSpeed);
 
     const newInstance = {
@@ -165,15 +172,38 @@ export default function SnowballFight() {
     event.preventDefault();
     event.stopPropagation();
 
+    // button 0 = left click | button 2 = right click
+    if (pointerLocked && event.button === 0) {
+      // Fire immediately
+      // instances();
+
+      // Start continuous firing
+      setIsFiring(true);
+
+      fireIntervalRef.current = setInterval(() => {
+        setCountSecBall((prev) => { return prev + 0.1 })
+      }, fireInterval);
+    }
+
     if (!pointerLocked) {
       gl.domElement.requestPointerLock();
     }
-
-    // button 0 = left button
-    if (pointerLocked && event.button === 0) {
-      instances();
-    }
   };
+
+  const handleMouseUp = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (pointerLocked && event.button === 0) {
+      // Stop continuous firing
+      setIsFiring(false);
+
+      if (fireIntervalRef.current) {
+        clearInterval(fireIntervalRef.current);
+        fireIntervalRef.current = null;
+      }
+    }
+  }
 
   const handlePointerLockChange = () => {
     const locked = document.pointerLockElement === gl.domElement;
@@ -197,6 +227,10 @@ export default function SnowballFight() {
   };
 
   useEffect(() => {
+    console.log("Counter updated:", countSecBall);
+  }, [countSecBall]);
+
+  useEffect(() => {
     // const unsubscribeJump = subscriberKeys(
     //   (state) => {
     //     return state.jump;
@@ -209,8 +243,9 @@ export default function SnowballFight() {
     // );
 
     document.addEventListener("pointerlockchange", handlePointerLockChange);
-    gl.domElement.addEventListener("mousedown", handleMouseDown);
     gl.domElement.addEventListener("mousemove", handleMouseMove);
+    gl.domElement.addEventListener("mousedown", handleMouseDown);
+    gl.domElement.addEventListener("mouseup", handleMouseUp);
 
     return () => {
       // unsubscribeJump();
@@ -219,6 +254,7 @@ export default function SnowballFight() {
       // window.removeEventListener("pointerlockchange", handlePointerLockChange);
       gl.domElement.removeEventListener("mousemove", handleMouseMove);
       gl.domElement.removeEventListener("mousedown", handleMouseDown);
+      gl.domElement.removeEventListener("mouseup", handleMouseUp);
     };
   }, [pointerLocked]);
 
@@ -228,15 +264,14 @@ export default function SnowballFight() {
     const lastBulletInstance = bulletInstances[bulletInstances.length - 1];
     const lastBulletIndex = bulletInstances.length - 1;
 
-    if (bulletRef.current.at(lastBulletIndex)) {
-      console.log(bulletRef.current.at(lastBulletIndex).colliderSet);
+    setTimeout(() => {
+      if (bulletRef.current.at(lastBulletIndex)) {
+        const rigidBody = bulletRef.current.at(lastBulletIndex).collider(0)
 
-      bulletRef.current
-        .at(lastBulletIndex)
-        .applyImpulse(lastBulletInstance.impulse, true);
-
-      bulletRef.current.at(lastBulletIndex).collider(0).setRestitution(1);
-    }
+        rigidBody.setRestitution(0.30);
+        rigidBody.parent().applyImpulse(lastBulletInstance.impulse, true);
+      }
+    }, 5)
 
     // setTimeout(() => {
     //   bulletRef.current
@@ -287,17 +322,19 @@ export default function SnowballFight() {
       {bulletInstances.length > 0 && (
         <InstancedRigidBodies
           ref={bulletRef}
-          type="dynamic"
           instances={bulletInstances}
           colliders={false}
           ccd={true}
           linearDamping={1.0}
           angularDamping={1.5}
+          colliderNodes={[
+            <BallCollider args={[0.1]} />
+          ]}
+
         >
-          <instancedMesh args={[undefined, undefined, 1000]} count={1000}>
-            <BallCollider args={[0.5]} />
-            <sphereGeometry args={[0.1, 16, 16]} />
-            <meshBasicMaterial color="red" />
+          <instancedMesh args={[undefined, undefined, 1000]} count={1000} frustumCulled={false}>
+            <sphereGeometry args={[0.1, 50, 50]} />
+            <meshBasicMaterial color="blue" />
           </instancedMesh>
         </InstancedRigidBodies>
       )}

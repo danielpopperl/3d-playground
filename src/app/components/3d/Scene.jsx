@@ -47,7 +47,7 @@ export default function Scene() {
       >
         <Suspense fallback={null}>
           {/* <OrbitControls ref={camRef} /> */}
-          <OrthographicCamera near={0.001} far={1000} />
+          {/* <OrthographicCamera near={0.001} far={1000} /> */}
 
           <Physics
             timeStep={"vary"}
