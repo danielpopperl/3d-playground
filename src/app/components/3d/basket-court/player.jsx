@@ -195,7 +195,6 @@ export default function Player() {
             playerPos.z + ray.ray.direction.z * 1.5, // Offset forward
         ];
 
-
         // Use the ray direction for bullet velocity
         const bulletSpeed = 1; // Adjust as needed
         const impulse = ray.ray.direction.multiplyScalar(bulletSpeed);

@@ -141,7 +141,7 @@ export function Court(props) {
                   <ConeCollider
                     name="basket-up"
                     ref={colliderRef}
-                    args={[0.07, 1]}
+                    args={[0.07, 0.7]}
                     position={[0, 0, 0]}
                     rotation={[Math.PI / 2, 0, 0]}
                     sensor={true}
@@ -155,7 +155,7 @@ export function Court(props) {
                   <CylinderCollider
                     name="basket-botton"
                     ref={colliderRef}
-                    args={[0.07, 1]}
+                    args={[0.07, 0.7]}
                     position={[0, 0, -0.6]}
                     rotation={[Math.PI / 2, 0, 0]}
                     sensor={true}
@@ -531,13 +531,11 @@ export function Court(props) {
                   <ConeCollider
                     name="basket-up"
                     ref={colliderRef}
-                    args={[0.07, 1]}
+                    args={[0.05, 0.7]}
                     position={[0, 0, -0.2]}
                     rotation={[Math.PI / 2, 0, 0]}
                     sensor={true}
                     onIntersectionEnter={() => {
-                      // console.log(colliderOrder, "from top")
-                      console.log(colliderOrderLeft)
                       if (colliderOrderLeft === "empty_left") setColliderOrderLeft("top_left")
                       if (colliderOrderLeft === "botton_left") setColliderOrderLeft("empty_left")
                     }}
@@ -546,12 +544,11 @@ export function Court(props) {
                   <CylinderCollider
                     name="basket-botton"
                     ref={colliderRef}
-                    args={[0.07, 1]}
+                    args={[0.05, 0.7]}
                     position={[0, 0, -0.6]}
                     rotation={[Math.PI / 2, 0, 0]}
                     sensor={true}
                     onIntersectionEnter={() => {
-                      console.log(colliderOrderLeft)
                       if (colliderOrderLeft === "empty_left") setColliderOrderLeft("botton_left")
                       if (colliderOrderLeft === "botton_left") setColliderOrderLeft("empty_left")
                       if (colliderOrderLeft === "top_left") {
