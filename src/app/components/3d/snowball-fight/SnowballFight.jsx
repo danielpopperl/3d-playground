@@ -175,14 +175,14 @@ export default function SnowballFight() {
     // button 0 = left click | button 2 = right click
     if (pointerLocked && event.button === 0) {
       // Fire immediately
-      // instances();
+      instances();
 
       // Start continuous firing
-      setIsFiring(true);
+      // setIsFiring(true);
 
-      fireIntervalRef.current = setInterval(() => {
-        setCountSecBall((prev) => { return prev + 0.1 })
-      }, fireInterval);
+      // fireIntervalRef.current = setInterval(() => {
+      //   setCountSecBall((prev) => { return prev + 0.1 })
+      // }, fireInterval);
     }
 
     if (!pointerLocked) {
