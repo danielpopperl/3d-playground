@@ -1,13 +1,18 @@
 "use client";
 
-import { Environment, KeyboardControls } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
+import {
+  KeyboardControls,
+  OrbitControls,
+} from "@react-three/drei";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
 import { Suspense, useMemo } from "react";
-import Ground from "./snowball-fight/Ground";
-import SnowballFight from "./snowball-fight/SnowballFight";
+import { Court } from "./basket-court/court";
+import Lights from "./basket-court/lights";
+import Player from "./basket-court/player";
 
 export default function Scene() {
+
   const controls = {
     forward: "forward",
     backward: "backward",
@@ -27,25 +32,47 @@ export default function Scene() {
     []
   );
 
+
   return (
     <KeyboardControls map={mapControls}>
       <Canvas
-        camera={[0, 5, 0]}
+        camera={[10, 0, 0]}
         onCreated={({ gl }) => {
           gl.domElement.setAttribute("tabIndex", "0"); // required for focus
           gl.domElement.focus();
         }}
       >
         <Suspense fallback={null}>
-          {/* <OrbitControls ref={camRef} /> */}
+          <OrbitControls
+            target={[0, 5, 0]}
+            // enablePan={false}
+            // enableZoom={false}
+            maxPolarAngle={Math.PI / 2}
+          />
 
-          <Physics timeStep={"vary"} gravity={[0, -30, 0]} debug>
-            <Ground />
+          <Lights />
 
-            <SnowballFight />
+          <Physics
+            timeStep={"vary"}
+            gravity={[0, -45, 0]}
+            maxStabilizationIterations={10} // Increase for better stability
+            maxVelocityIterations={10} // Increase for better velocity resolution
+            debug
+          >
+            {/* <Ground /> */}
+            {/* <SnowballFight /> */}
+
+            <Court position={[0, 0, 0]} />
+
+            <Player />
+
+            <mesh scale={10} position={[0, 10, 0]} >
+              <torusGeometry args={[0.7, 2, 1.6, 16]} />
+              <meshBasicMaterial side={2} color="red" />
+            </mesh>
           </Physics>
 
-          <Environment preset="studio" />
+          {/* <Environment preset="studio" /> */}
         </Suspense>
       </Canvas>
     </KeyboardControls>

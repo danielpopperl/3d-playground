@@ -1,7 +1,15 @@
+"use client";
+
 import { useKeyboardControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { CuboidCollider, RigidBody, useRapier } from "@react-three/rapier";
-import { useEffect, useRef, useState } from "react";
+import {
+  BallCollider,
+  CuboidCollider,
+  InstancedRigidBodies,
+  RigidBody,
+  useRapier,
+} from "@react-three/rapier";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 
 export default function SnowballFight() {
@@ -9,51 +17,51 @@ export default function SnowballFight() {
   const meshRef = useRef();
   const mouseYaw = useRef(0);
   const mousePitch = useRef(0);
+  const bulletRef = useRef();
+  const fireIntervalRef = useRef(null);
 
-  const [jumped, setJumped] = useState(false);
+
+  const [isFiring, setIsFiring] = useState(false);
+  const [countSecBall, setCountSecBall] = useState(0);
+  const [bulletInstances, setBulletInstances] = useState([]);
   const [pointerLocked, setPointerLocked] = useState(false);
-  const [collision, setCollision] = useState(false);
-
-  const { gl } = useThree();
-  const { rapier, world } = useRapier();
-  const [subscriberKeys, getKeys] = useKeyboardControls();
-
-  // SMOOTH CAMERA MOVEMENT
+  const [smoothedCameraTarget] = useState(() => new THREE.Vector3());
   const [smoothedCameraPosition] = useState(
     () => new THREE.Vector3(10, 10, 10)
   );
-  const [smoothedCameraTarget] = useState(() => new THREE.Vector3());
+
+  const { camera, gl, scene } = useThree();
+  const { rapier, world } = useRapier();
+  const [subscriberKeys, getKeys] = useKeyboardControls();
 
   // OBJECT VARIABLES
-  const speed = 100;
+  const speed = 300;
   const maxSpeed = 20;
+  const fireRate = 10; // Adjust as needed
+  const fireInterval = 1000 / fireRate; // Convert to milliseconds
 
-  const jump = () => {
+  const jump12 = () => {
     const origin = playerRef.current.translation();
     origin.y -= 0.89;
     const direction = { x: 0, y: -1, z: 0 };
     const ray = new rapier.Ray(origin, direction);
     const hit = world.castRay(ray, 10, true);
 
-    if (hit && hit.timeOfImpact <= 0.1) {
-      playerRef.current.setLinvel({ x: 0, y: 10, z: 0 });
+    if (hit && hit.timeOfImpact <= 0.13) {
+      playerRef.current.setLinvel({ x: 0, y: 10, z: 0 }, true);
     }
   };
 
   useFrame(({ camera }, delta) => {
     if (!playerRef.current) return;
 
+    updateCamera(camera);
+
     const impulse = { x: 0, y: 0, z: 0 };
     const impulseStrength = 1;
 
-    // const origin = playerRef.current.translation();
-    // const direction = { x: 0, y: 0, z: 0 };
-    // const ray = new rapier.Ray(origin, direction);
-    // const hit = world.castRay(ray, 10, false);
-    // console.log(hit);
-
     // CONTROLS
-    const { forward, backward, left, right } = getKeys();
+    const { forward, backward, left, right, jump } = getKeys();
 
     // READ PLAYER'S LINEAR VELOCITY
     const currentPlayerVelocity = playerRef.current.linvel();
@@ -70,10 +78,13 @@ export default function SnowballFight() {
     if (right) {
       impulse.x += impulseStrength;
     }
+    if (jump) {
+      jump12();
+    }
 
     const moveVector = new THREE.Vector3(impulse.x, 0, impulse.z);
 
-    if (moveVector.lengthSq() == 1) {
+    if (moveVector.lengthSq() >= 1) {
       moveVector.normalize();
 
       const dummy = new THREE.Object3D();
@@ -112,73 +123,99 @@ export default function SnowballFight() {
     } else {
       if (meshRef.current) meshRef.current.rotation.y = mouseYaw.current; // set player (mesh) rotation same as camera rotation
     }
-
-    // playerRef.current.setLinvel(
-    //   {
-    //     x: impulse.x,
-    //     y: currentPlayerVelocity.y,
-    //     z: impulse.z,
-    //   },
-    //   true
-    // );
-
-    // CAMERA
-
-    // const playerCam = new THREE.Vector3(); // write player position to playerCam and add y and z
-    // playerCam.copy(playerPos);
-    // playerCam.y += 2;
-    // playerCam.z += 5;
-
-    // const cameraTarget = new THREE.Vector3();
-    // cameraTarget.copy(playerPos);
-    // cameraTarget.y += 2;
-
-    // smoothedCameraPosition.lerp(playerCam, 10 * delta);
-    // smoothedCameraTarget.lerp(cameraTarget, 5 * delta);
-
-    // camera.position.copy(playerCam); // write playerCam to threejs camera
-    // camera.lookAt(cameraTarget); // set threejs camera to look at new coordinates
-
-    updateCamera(camera);
   });
 
   function updateCamera(camera) {
-    const playerPosNew = playerRef.current.translation(); // read player position
+    const playerPos = playerRef.current.translation(); // read player position
 
     // ROTATIO CAMERA BY MOUSE MOVEMENT
     camera.rotation.order = "YXZ";
     camera.rotation.y = mouseYaw.current;
     camera.rotation.x = mousePitch.current;
 
-    camera.position.set(
-      playerPosNew.x,
-      playerPosNew.y + 1.7,
-      playerPosNew.z + 5
-    );
+    camera.position.set(playerPos.x, playerPos.y + 1.7, playerPos.z);
   }
 
-  useEffect(() => {
-    const unsubscribeJump = subscriberKeys(
-      (state) => {
-        return state.jump;
-      },
-      (value) => {
-        if (value) {
-          jump();
-        }
-      }
-    );
+  const instances = useCallback(() => {
+    const mouse = new THREE.Vector2(0, 0);
 
-    const handleClick = () => {
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(mouse, camera);
+
+    // Get player position for bullet spawn point
+    const playerPos = playerRef.current.translation();
+
+    // Spawn bullet slightly in front of player at eye level
+    const spawnPos = [
+      playerPos.x + ray.ray.direction.x * 0.5, // Offset forward
+      playerPos.y + 1.7, // Eye level
+      playerPos.z + ray.ray.direction.z * 1.5, // Offset forward
+    ];
+
+
+    // Use the ray direction for bullet velocity
+    const bulletSpeed = 0.09; // Adjust as needed
+    const impulse = ray.ray.direction.multiplyScalar(bulletSpeed);
+
+    const newInstance = {
+      key: Date.now() + Math.random(),
+      position: spawnPos,
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      impulse: impulse,
+    };
+
+    setBulletInstances((prev) => [...prev, newInstance]);
+  }, [camera, playerRef.current]);
+
+  const handleMouseDown = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // button 0 = left click | button 2 = right click
+    if (pointerLocked && event.button === 0) {
+      // Fire immediately
+      instances();
+
+      // Start continuous firing
+      // setIsFiring(true);
+
+      // fireIntervalRef.current = setInterval(() => {
+      //   setCountSecBall((prev) => { return prev + 0.1 })
+      // }, fireInterval);
+    }
+
+    if (!pointerLocked) {
       gl.domElement.requestPointerLock();
-    };
+    }
+  };
 
-    const handlePointerLockChange = () => {
-      const locked = document.pointerLockElement === gl.domElement;
-      setPointerLocked(locked);
-    };
+  const handleMouseUp = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
 
-    const handleMouseMove = (event) => {
+    if (pointerLocked && event.button === 0) {
+      // Stop continuous firing
+      setIsFiring(false);
+
+      if (fireIntervalRef.current) {
+        clearInterval(fireIntervalRef.current);
+        fireIntervalRef.current = null;
+      }
+    }
+  }
+
+  const handlePointerLockChange = () => {
+    const locked = document.pointerLockElement === gl.domElement;
+
+    setPointerLocked(locked);
+  };
+
+  const handleMouseMove = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (pointerLocked) {
       mouseYaw.current -= event.movementX * 0.002;
 
       mousePitch.current -= event.movementY * 0.002;
@@ -186,41 +223,121 @@ export default function SnowballFight() {
         -Math.PI / 2,
         Math.min(Math.PI / 2, mousePitch.current)
       );
-    };
+    }
+  };
 
-    gl.domElement.addEventListener("click", handleClick);
+  useEffect(() => {
+    console.log("Counter updated:", countSecBall);
+  }, [countSecBall]);
+
+  useEffect(() => {
+    // const unsubscribeJump = subscriberKeys(
+    //   (state) => {
+    //     return state.jump;
+    //   },
+    //   (value) => {
+    //     if (value) {
+    //       jump();
+    //     }
+    //   }
+    // );
+
     document.addEventListener("pointerlockchange", handlePointerLockChange);
-    document.addEventListener("mousemove", handleMouseMove);
+    gl.domElement.addEventListener("mousemove", handleMouseMove);
+    gl.domElement.addEventListener("mousedown", handleMouseDown);
+    gl.domElement.addEventListener("mouseup", handleMouseUp);
 
-    return () => unsubscribeJump();
-  }, [gl]);
+    return () => {
+      // unsubscribeJump();
+      // window.removeEventListener("mousemove", handleMouseMove);
+      // window.removeEventListener("mousedown", handleMouseDown);
+      // window.removeEventListener("pointerlockchange", handlePointerLockChange);
+      gl.domElement.removeEventListener("mousemove", handleMouseMove);
+      gl.domElement.removeEventListener("mousedown", handleMouseDown);
+      gl.domElement.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [pointerLocked]);
+
+  useEffect(() => {
+    if (bulletInstances.length <= 0) return;
+
+    const lastBulletInstance = bulletInstances[bulletInstances.length - 1];
+    const lastBulletIndex = bulletInstances.length - 1;
+
+    setTimeout(() => {
+      if (bulletRef.current.at(lastBulletIndex)) {
+        const rigidBody = bulletRef.current.at(lastBulletIndex).collider(0)
+
+        rigidBody.setRestitution(0.30);
+        rigidBody.parent().applyImpulse(lastBulletInstance.impulse, true);
+      }
+    }, 5)
+
+    // setTimeout(() => {
+    //   bulletRef.current
+    //     .at(lastBulletIndex)
+    //     .applyImpulse(lastBulletInstance.impulse, true);
+
+    //   console.log(bulletRef.current.at(lastBulletIndex));
+    // }, 5);
+  }, [bulletInstances]);
 
   return (
-    //   {/* <OrthographicCamera fov={70} position={[0, 5, 10]} /> */}
+    <group>
+      <RigidBody
+        ref={playerRef}
+        position={[0, 0.5, 0]}
+        type="dynamic"
+        colliders={false}
+        enabledRotations={[false, false, false]}
+        linearDamping={0.1}
+        angularDamping={0.5}
+      >
+        <mesh ref={meshRef} castShadow receiveShadow>
+          <CuboidCollider
+            args={[0.55, 0.55, 1]}
+            friction={5} // Aderência ao chão
+            restitution={0} // Sem bounce
+          />
+          <boxGeometry args={[1, 1, 2]} />
+          <meshPhysicalMaterial color="green" />
+        </mesh>
+      </RigidBody>
 
-    <RigidBody
-      ref={playerRef}
-      position={[0, 0.5, 0]}
-      type="dynamic"
-      colliders={false}
-      lockRotations
-      linearDamping={0.1}
-      angularDamping={0.5}
-      friction={2} // Aderência ao chão
-      restitution={0} // Sem bounce
-      onCollisionEnter={({ target }) => {
-        setCollision(true);
-      }}
-      onCollisionExit={({ target }) => {
-        setCollision(false);
-      }}
-    >
-      <CuboidCollider args={[0.55, 0.55, 1]} />
+      <RigidBody
+        position={[0, 0.5, 0]}
+        type="fixed"
+        colliders={false}
+        lockRotations
+        linearDamping={0.1}
+        angularDamping={0.5}
+      >
+        <mesh castShadow receiveShadow position={[1, 1, 5]} name={"npc"}>
+          <CuboidCollider args={[0.55, 0.55, 1]} friction={0} restitution={0} />
+          <boxGeometry args={[1, 1, 2]} />
+          <meshPhysicalMaterial color="green" />
+        </mesh>
+      </RigidBody>
 
-      <mesh ref={meshRef} castShadow receiveShadow>
-        <boxGeometry args={[1, 1, 2]} />
-        <meshPhysicalMaterial color="green" />
-      </mesh>
-    </RigidBody>
+      {bulletInstances.length > 0 && (
+        <InstancedRigidBodies
+          ref={bulletRef}
+          instances={bulletInstances}
+          colliders={false}
+          ccd={true}
+          linearDamping={1.0}
+          angularDamping={1.5}
+          colliderNodes={[
+            <BallCollider args={[0.1]} />
+          ]}
+
+        >
+          <instancedMesh args={[undefined, undefined, 1000]} count={1000} frustumCulled={false}>
+            <sphereGeometry args={[0.1, 50, 50]} />
+            <meshBasicMaterial color="blue" />
+          </instancedMesh>
+        </InstancedRigidBodies>
+      )}
+    </group>
   );
 }
