@@ -6,30 +6,221 @@ Source: https://sketchfab.com/3d-models/basketball-54d4d2302dd3449e97ace9c29b57c
 Title: Basketball
 */
 
-import React, { useRef } from 'react'
-import { useGLTF } from '@react-three/drei'
+import { Decal, useGLTF, useTexture } from "@react-three/drei";
+import { BallCollider, RigidBody } from "@react-three/rapier";
+import GUI from "lil-gui";
+import { forwardRef, useEffect, useState } from "react";
 
-export function Model(props) {
-  const { nodes, materials } = useGLTF('/3d/basket-ball/scene.gltf')
-  
-  return (
-    <group {...props} dispose={null}>
-      <mesh
-        name="Object_4"
-        castShadow
-        receiveShadow
-        geometry={nodes.Object_4.geometry}
-        material={materials.Bola}
-      />
-      <mesh
-        name="Object_5"
-        castShadow
-        receiveShadow
-        geometry={nodes.Object_5.geometry}
-        material={materials.Linhas}
-      />
-    </group>
-  )
+// Hook para controlar o decal com GUI
+function useDecalControls(initialConfig) {
+  const [controls, setControls] = useState(() => ({
+    positionX: initialConfig?.position?.[0] ?? 0,
+    positionY: initialConfig?.position?.[1] ?? 1.1,
+    positionZ: initialConfig?.position?.[2] ?? 0,
+    rotationX: initialConfig?.rotation?.[0] ?? 0,
+    rotationY: initialConfig?.rotation?.[1] ?? 0,
+    rotationZ: initialConfig?.rotation?.[2] ?? 0,
+    scaleX: initialConfig?.scale?.[0] ?? 1,
+    scaleY: initialConfig?.scale?.[1] ?? 1,
+    scaleZ: initialConfig?.scale?.[2] ?? 1,
+    opacity: initialConfig?.opacity ?? 0.4,
+    show: initialConfig?.show ?? true,
+  }));
+
+  // Atualiza controles quando initialConfig muda
+  useEffect(() => {
+    if (initialConfig?.enabled) {
+      setControls({
+        positionX: initialConfig?.position?.[0] ?? 0,
+        positionY: initialConfig?.position?.[1] ?? 1.1,
+        positionZ: initialConfig?.position?.[2] ?? 0,
+        rotationX: initialConfig?.rotation?.[0] ?? 0,
+        rotationY: initialConfig?.rotation?.[1] ?? 0,
+        rotationZ: initialConfig?.rotation?.[2] ?? 0,
+        scaleX: initialConfig?.scale?.[0] ?? 1,
+        scaleY: initialConfig?.scale?.[1] ?? 1,
+        scaleZ: initialConfig?.scale?.[2] ?? 1,
+        opacity: initialConfig?.opacity ?? 0.4,
+        show: initialConfig?.show ?? true,
+      });
+    }
+  }, [
+    initialConfig?.position,
+    initialConfig?.rotation,
+    initialConfig?.scale,
+    initialConfig?.opacity,
+    initialConfig?.show,
+  ]);
+
+  const [gui, setGui] = useState(null);
+
+  useEffect(() => {
+    if (!initialConfig?.enabled) {
+      if (gui) {
+        gui.destroy();
+        setGui(null);
+      }
+      return;
+    }
+
+    if (gui) return; // Já existe GUI
+
+    const newGui = new GUI({ title: "Ball Decal Controls" });
+
+    const posFolder = newGui.addFolder("Position");
+    posFolder.add(controls, "positionX", -2, 2, 0.01).onChange((value) => {
+      setControls((prev) => ({ ...prev, positionX: value }));
+    });
+    posFolder.add(controls, "positionY", -2, 2, 0.01).onChange((value) => {
+      setControls((prev) => ({ ...prev, positionY: value }));
+    });
+    posFolder.add(controls, "positionZ", -2, 2, 0.01).onChange((value) => {
+      setControls((prev) => ({ ...prev, positionZ: value }));
+    });
+
+    const rotFolder = newGui.addFolder("Rotation");
+    rotFolder
+      .add(controls, "rotationX", -Math.PI, Math.PI, 0.01)
+      .onChange((value) => {
+        setControls((prev) => ({ ...prev, rotationX: value }));
+      });
+    rotFolder
+      .add(controls, "rotationY", -Math.PI, Math.PI, 0.01)
+      .onChange((value) => {
+        setControls((prev) => ({ ...prev, rotationY: value }));
+      });
+    rotFolder
+      .add(controls, "rotationZ", -Math.PI, Math.PI, 0.01)
+      .onChange((value) => {
+        setControls((prev) => ({ ...prev, rotationZ: value }));
+      });
+
+    const scaleFolder = newGui.addFolder("Scale");
+    scaleFolder.add(controls, "scaleX", 0.1, 3, 0.01).onChange((value) => {
+      setControls((prev) => ({ ...prev, scaleX: value }));
+    });
+    scaleFolder.add(controls, "scaleY", 0.1, 3, 0.01).onChange((value) => {
+      setControls((prev) => ({ ...prev, scaleY: value }));
+    });
+    scaleFolder.add(controls, "scaleZ", 0.1, 3, 0.01).onChange((value) => {
+      setControls((prev) => ({ ...prev, scaleZ: value }));
+    });
+
+    newGui.add(controls, "opacity", 0, 1, 0.01).onChange((value) => {
+      setControls((prev) => ({ ...prev, opacity: value }));
+    });
+    newGui.add(controls, "show").onChange((value) => {
+      setControls((prev) => ({ ...prev, show: value }));
+    });
+
+    setGui(newGui);
+
+    return () => {
+      newGui.destroy();
+    };
+  }, [initialConfig?.enabled]);
+
+  return {
+    position: [controls.positionX, controls.positionY, controls.positionZ],
+    rotation: [controls.rotationX, controls.rotationY, controls.rotationZ],
+    scale: [controls.scaleX, controls.scaleY, controls.scaleZ],
+    opacity: controls.opacity,
+    show: controls.show,
+  };
 }
 
-useGLTF.preload('/3d/basket-ball/scene.gltf')
+export const Ball = forwardRef(function Ball(
+  {
+    position = [0, 0, 0],
+    scale = 1,
+    onCollision,
+    // Decal configuration props
+    decalPosition = [0, 1.1, 0],
+    decalRotation = [1.5, 0, 0],
+    decalScale = [1, 1, 1],
+    decalOpacity = 0.4,
+    showDecal = true,
+    // GUI controls
+    enableDecalGUI = false,
+    ...props
+  },
+  ref
+) {
+  const { nodes, materials } = useGLTF("/3d/basket-ball/scene.gltf");
+  const logoTexture = useTexture("/assets/embralogo.png");
+
+  // GUI controls (sempre chama o hook)
+  const guiControls = useDecalControls({
+    position: decalPosition,
+    rotation: decalRotation,
+    scale: decalScale,
+    opacity: decalOpacity,
+    show: showDecal,
+    enabled: enableDecalGUI,
+  });
+
+  // Use GUI controls quando habilitado, senão use props
+  const finalDecalProps = enableDecalGUI
+    ? guiControls
+    : {
+        position: decalPosition,
+        rotation: decalRotation,
+        scale: decalScale,
+        opacity: decalOpacity,
+        show: showDecal,
+      };
+
+  // Ensure nodes exist before rendering
+  if (!nodes || !materials || !nodes.Object_4 || !nodes.Object_5) {
+    return null;
+  }
+
+  return (
+    <RigidBody
+      ref={ref}
+      position={position}
+      scale={scale}
+      type="dynamic"
+      colliders={false}
+      ccd={true}
+      linearDamping={1}
+      angularDamping={1.5}
+      wireframe={true}
+      {...props}
+    >
+      <BallCollider args={[1]} />
+
+      <group>
+        {/* Main basketball sphere */}
+        <mesh
+          geometry={nodes.Object_4.geometry}
+          material={materials.Bola}
+          castShadow
+          receiveShadow
+        >
+          {/* Decal with the Embraer logo */}
+          {finalDecalProps.show && (
+            <Decal
+              position={finalDecalProps.position}
+              rotation={finalDecalProps.rotation}
+              scale={finalDecalProps.scale}
+              map={logoTexture}
+              opacity={finalDecalProps.opacity}
+            />
+          )}
+        </mesh>
+
+        {/* Basketball lines */}
+        <mesh
+          geometry={nodes.Object_5.geometry}
+          material={materials.Linhas}
+          castShadow
+          receiveShadow
+        />
+      </group>
+    </RigidBody>
+  );
+});
+
+// Preload the GLTF
+useGLTF.preload("/3d/basket-ball/scene.gltf");

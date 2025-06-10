@@ -1,89 +1,64 @@
 import { useKeyboardControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import {
-  BallCollider,
-  CuboidCollider,
-  InstancedRigidBodies,
-  RigidBody,
-  useRapier,
-} from "@react-three/rapier";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { CuboidCollider, RigidBody, useRapier } from "@react-three/rapier";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { useBasketBallAssets } from "./ball2";
+import { Ball } from "./ball";
 
 export default function Player() {
   const playerRef = useRef();
   const meshRef = useRef();
+  const ballRef = useRef();
   const mouseYaw = useRef(0);
   const mousePitch = useRef(0);
-  const bulletRef = useRef();
-  const fireIntervalRef = useRef(null);
 
-  // Add refs for the instanced meshes
-  const instancedMeshRef1 = useRef();
-  const instancedMeshRef2 = useRef();
-
-  const [isFiring, setIsFiring] = useState(false);
-  const [countSecBall, setCountSecBall] = useState(0);
-  const [bulletInstances, setBulletInstances] = useState([]);
   const [pointerLocked, setPointerLocked] = useState(false);
+  const [ballState, setBallState] = useState("withPlayer"); // 'withPlayer', 'thrown', 'returning'
+  const [ballPosition, setBallPosition] = useState([0, 0, 0]);
 
-  const { camera, gl, scene } = useThree();
+  const { camera, gl } = useThree();
   const { rapier, world } = useRapier();
   const [subscriberKeys, getKeys] = useKeyboardControls();
 
   // OBJECT VARIABLES
   const speed = 300;
   const maxSpeed = 20;
-  const fireRate = 10; // Adjust as needed
-  const fireInterval = 1000 / fireRate; // Convert to milliseconds
-
-  // Load basketball assets using the new hook
-  const { assets: basketballAssets, isLoaded: assetsLoaded } =
-    useBasketBallAssets();
 
   useFrame(({ camera }, delta) => {
     if (!playerRef.current) return;
 
     updateCamera(camera);
 
-    // Update basketball instance positions from physics bodies
-    if (bulletRef.current && bulletInstances.length > 0) {
-      const tempMatrix = new THREE.Matrix4();
-      const tempPosition = new THREE.Vector3();
-      const tempRotation = new THREE.Quaternion();
-      const tempScale = new THREE.Vector3(0.2, 0.2, 0.2); // Match your scale
+    // Handle ball return logic
+    if (ballState === "returning" && ballRef.current && playerRef.current) {
+      const ballPos = ballRef.current.translation();
+      const playerPos = playerRef.current.translation();
 
-      for (let i = 0; i < bulletInstances.length; i++) {
-        const rigidBody = bulletRef.current.at(i);
+      // Calculate direction from ball to player
+      const direction = new THREE.Vector3(
+        playerPos.x - ballPos.x,
+        playerPos.y + 1.7 - ballPos.y,
+        playerPos.z - ballPos.z
+      );
 
-        if (rigidBody) {
-          // Get position and rotation from physics body
-          const translation = rigidBody.translation();
-          const rotation = rigidBody.rotation();
-
-          tempPosition.set(translation.x, translation.y, translation.z);
-          tempRotation.set(rotation.x, rotation.y, rotation.z, rotation.w);
-
-          // Create transformation matrix
-          tempMatrix.compose(tempPosition, tempRotation, tempScale);
-
-          // Update both instanced meshes if they exist
-          if (instancedMeshRef1.current) {
-            instancedMeshRef1.current.setMatrixAt(i, tempMatrix);
-          }
-          if (instancedMeshRef2.current) {
-            instancedMeshRef2.current.setMatrixAt(i, tempMatrix);
-          }
-        }
-      }
-
-      // Mark instances as needing update
-      if (instancedMeshRef1.current) {
-        instancedMeshRef1.current.instanceMatrix.needsUpdate = true;
-      }
-      if (instancedMeshRef2.current) {
-        instancedMeshRef2.current.instanceMatrix.needsUpdate = true;
+      // Check if ball is close enough to player
+      if (direction.length() < 1.5) {
+        setBallState("withPlayer");
+        // Stop ball movement
+        ballRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+        ballRef.current.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      } else {
+        // Apply force toward player
+        direction.normalize();
+        const returnSpeed = 15;
+        ballRef.current.setLinvel(
+          {
+            x: direction.x * returnSpeed,
+            y: direction.y * returnSpeed,
+            z: direction.z * returnSpeed,
+          },
+          true
+        );
       }
     }
 
@@ -150,12 +125,22 @@ export default function Player() {
     } else {
       if (meshRef.current) meshRef.current.rotation.y = mouseYaw.current; // set player (mesh) rotation same as camera rotation
     }
+
+    // Update ball position when it's with the player
+    if (ballState === "withPlayer" && playerRef.current) {
+      const playerPos = playerRef.current.translation();
+      setBallPosition([
+        playerPos.x + Math.sin(mouseYaw.current) * 1.2, // Slightly in front
+        playerPos.y + 1.5, // At chest level
+        playerPos.z + Math.cos(mouseYaw.current) * 1.2,
+      ]);
+    }
   });
 
   function updateCamera(camera) {
     const playerPos = playerRef.current.translation(); // read player position
 
-    // ROTATIO CAMERA BY MOUSE MOVEMENT
+    // ROTATION CAMERA BY MOUSE MOVEMENT
     camera.rotation.order = "YXZ";
     camera.rotation.y = mouseYaw.current;
     camera.rotation.x = mousePitch.current;
@@ -170,43 +155,55 @@ export default function Player() {
     const ray = new rapier.Ray({ origin, dir: direction });
     const hit = world.castRay(ray, 10, true);
 
-    console.log(origin);
-
     if (hit && hit.timeOfImpact <= 0.13) {
       playerRef.current.setLinvel({ x: 0, y: 10, z: 0 }, true);
     }
   };
 
-  const instances = useCallback(() => {
-    const mouse = new THREE.Vector2(0, 0);
+  const throwBall = () => {
+    if (ballState !== "withPlayer" || !ballRef.current || !playerRef.current)
+      return;
 
+    const mouse = new THREE.Vector2(0, 0);
     const ray = new THREE.Raycaster();
     ray.setFromCamera(mouse, camera);
 
-    // Get player position for bullet spawn point
-    const playerPos = playerRef.current.translation();
+    // Throw ball in the direction the player is looking
+    const throwSpeed = 20;
+    const impulse = ray.ray.direction.multiplyScalar(throwSpeed);
 
-    // Spawn bullet slightly in front of player at eye level
-    const spawnPos = [
-      playerPos.x + ray.ray.direction.x * 0.5, // Offset forward
-      playerPos.y + 1.7, // Eye level
-      playerPos.z + ray.ray.direction.z * 1.5, // Offset forward
-    ];
+    // Set ball state and apply impulse
+    setBallState("thrown");
 
-    // Use the ray direction for bullet velocity
-    const bulletSpeed = 1; // Adjust as needed
-    const impulse = ray.ray.direction.multiplyScalar(bulletSpeed);
+    // Small delay to ensure ball physics are ready
+    setTimeout(() => {
+      if (ballRef.current) {
+        ballRef.current.setLinvel(
+          {
+            x: impulse.x,
+            y: impulse.y,
+            z: impulse.z,
+          },
+          true
+        );
 
-    const newInstance = {
-      key: Date.now() + Math.random(),
-      position: spawnPos,
-      rotation: [0, 0, 0],
-      scale: [1, 1, 1],
-      impulse: impulse,
-    };
+        // Add some spin
+        ballRef.current.setAngvel(
+          {
+            x: (Math.random() - 0.5) * 10,
+            y: (Math.random() - 0.5) * 10,
+            z: (Math.random() - 0.5) * 10,
+          },
+          true
+        );
+      }
+    }, 10);
+  };
 
-    setBulletInstances((prev) => [...prev, newInstance]);
-  }, []);
+  const returnBall = () => {
+    if (ballState !== "thrown") return;
+    setBallState("returning");
+  };
 
   const handleMouseDown = (event) => {
     event.preventDefault();
@@ -214,15 +211,11 @@ export default function Player() {
 
     // button 0 = left click | button 2 = right click
     if (pointerLocked && event.button === 0) {
-      // Fire immediately
-      instances();
-
-      // Start continuous firing
-      // setIsFiring(true);
-
-      // fireIntervalRef.current = setInterval(() => {
-      //   setCountSecBall((prev) => { return prev + 0.1 })
-      // }, fireInterval);
+      if (ballState === "withPlayer") {
+        throwBall();
+      } else if (ballState === "thrown") {
+        returnBall();
+      }
     }
 
     if (!pointerLocked) {
@@ -233,21 +226,10 @@ export default function Player() {
   const handleMouseUp = (event) => {
     event.preventDefault();
     event.stopPropagation();
-
-    if (pointerLocked && event.button === 0) {
-      // Stop continuous firing
-      setIsFiring(false);
-
-      if (fireIntervalRef.current) {
-        clearInterval(fireIntervalRef.current);
-        fireIntervalRef.current = null;
-      }
-    }
   };
 
   const handlePointerLockChange = () => {
     const locked = document.pointerLockElement === gl.domElement;
-
     setPointerLocked(locked);
   };
 
@@ -265,10 +247,6 @@ export default function Player() {
       );
     }
   };
-
-  useEffect(() => {
-    console.log("Counter updated:", countSecBall);
-  }, [countSecBall]);
 
   useEffect(() => {
     const unsubscribeJump = subscriberKeys(
@@ -296,39 +274,8 @@ export default function Player() {
       gl.domElement.removeEventListener("mousemove", handleMouseMove);
       gl.domElement.removeEventListener("mousedown", handleMouseDown);
       gl.domElement.removeEventListener("mouseup", handleMouseUp);
-
-      // Clear any running intervals
-      if (fireIntervalRef.current) {
-        clearInterval(fireIntervalRef.current);
-        fireIntervalRef.current = null;
-      }
     };
-  }, [pointerLocked]);
-
-  useEffect(() => {
-    if (bulletInstances.length <= 0) return;
-
-    const lastBulletInstance = bulletInstances[bulletInstances.length - 1];
-    const lastBulletIndex = bulletInstances.length - 1;
-
-    const timeoutId = setTimeout(() => {
-      if (bulletRef.current?.at(lastBulletIndex)) {
-        const rigidBody = bulletRef.current.at(lastBulletIndex).collider(0);
-
-        rigidBody.setRestitution(0.65);
-        rigidBody.parent().applyImpulse(lastBulletInstance.impulse, true);
-      }
-    }, 5);
-
-    // Cleanup old bullets to prevent memory leaks
-    if (bulletInstances.length > 100) {
-      setBulletInstances((prev) => prev.slice(-50)); // Keep only the last 50 bullets
-    }
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
-  }, [bulletInstances]);
+  }, [pointerLocked, ballState]);
 
   return (
     <group>
@@ -343,7 +290,7 @@ export default function Player() {
         <mesh ref={meshRef} castShadow receiveShadow>
           <CuboidCollider
             args={[0.55, 0.55, 1]}
-            friction={5} // Aderência ao chão
+            friction={10} // Aderência ao chão
             restitution={0} // Sem bounce
             restitutionCombineRule={1}
           />
@@ -352,72 +299,18 @@ export default function Player() {
         </mesh>
       </RigidBody>
 
-      {bulletInstances.length > 0 && assetsLoaded && basketballAssets && (
-        <InstancedRigidBodies
-          ref={bulletRef}
-          instances={bulletInstances}
-          colliders={false}
-          ccd={true}
-          linearDamping={1}
-          angularDamping={1.5}
-          scale={1}
-          colliderNodes={[<BallCollider args={[0.21]} />]}
-        >
-          {/* First mesh layer with ref */}
-          <instancedMesh
-            ref={instancedMeshRef1}
-            args={[
-              basketballAssets.geometry1,
-              basketballAssets.material1,
-              1000,
-            ]}
-            count={bulletInstances.length}
-            frustumCulled={false}
-            castShadow
-            receiveShadow
-          />
-
-          {/* Second mesh layer with ref (if available) */}
-          <instancedMesh
-            ref={instancedMeshRef2}
-            args={[
-              basketballAssets.geometry2,
-              basketballAssets.material2,
-              1000,
-            ]}
-            count={bulletInstances.length}
-            frustumCulled={false}
-            castShadow
-            receiveShadow
-          />
-        </InstancedRigidBodies>
-      )}
-
-      {/* Fallback while assets are loading */}
-      {bulletInstances.length > 0 && !assetsLoaded && (
-        <InstancedRigidBodies
-          ref={bulletRef}
-          instances={bulletInstances}
-          colliders={false}
-          ccd={true}
-          linearDamping={1}
-          angularDamping={1.5}
-          scale={1}
-          colliderNodes={[<BallCollider args={[0.21]} />]}
-        >
-          <instancedMesh
-            ref={instancedMeshRef1}
-            args={[undefined, undefined, 1000]}
-            count={bulletInstances.length}
-            frustumCulled={false}
-            castShadow
-            receiveShadow
-          >
-            <sphereGeometry args={[0.21, 32, 32]} />
-            <meshStandardMaterial color="orange" />
-          </instancedMesh>
-        </InstancedRigidBodies>
-      )}
+      {/* Single Basketball */}
+      <Ball
+        ref={ballRef}
+        position={ballPosition}
+        scale={0.2}
+        restitution={0.65}
+        enableDecalGUI={true}
+        decalPosition={[0, 1.1, 0]}
+        decalRotation={[1.5, 0, 0]}
+        decalScale={[1, 1, 1]}
+        decalOpacity={0.4}
+      />
     </group>
   );
 }
