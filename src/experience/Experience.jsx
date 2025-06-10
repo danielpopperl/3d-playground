@@ -37,7 +37,7 @@ export default function Experience() {
         }}
       >
         <Suspense fallback={null}>
-          <Perf />
+          <Perf position="top-left" />
 
           <OrbitControls target={[0, 5, 0]} maxPolarAngle={Math.PI / 2} />
 
