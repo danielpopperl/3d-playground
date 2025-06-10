@@ -1,6 +1,7 @@
 import { KeyboardControls, OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
+import { Perf } from "r3f-perf";
 import { Suspense, useMemo } from "react";
 import { Court } from "../components/basket-court/court";
 import Lights from "../components/basket-court/lights";
@@ -36,6 +37,8 @@ export default function Experience() {
         }}
       >
         <Suspense fallback={null}>
+          <Perf />
+
           <OrbitControls target={[0, 5, 0]} maxPolarAngle={Math.PI / 2} />
 
           <Lights />
@@ -43,11 +46,6 @@ export default function Experience() {
           <Physics timeStep="vary" gravity={[0, -45, 0]} debug>
             <Court position={[0, 0, 0]} />
             <Player />
-
-            <mesh scale={10} position={[0, 10, 0]}>
-              <torusGeometry args={[0.7, 2, 1.6, 16]} />
-              <meshBasicMaterial side={2} color="red" />
-            </mesh>
           </Physics>
         </Suspense>
       </Canvas>
