@@ -13,8 +13,6 @@ export default function Player() {
     const mousePitch = useRef(0);
     const bulletRef = useRef();
     const fireIntervalRef = useRef(null);
-
-    // Add refs for the instanced meshes
     const instancedMeshRef1 = useRef();
     const instancedMeshRef2 = useRef();
 
@@ -48,45 +46,7 @@ export default function Player() {
 
         updateCamera(camera);
 
-        // Update basketball instance positions from physics bodies
-        if (bulletRef.current && bulletInstances.length > 0) {
-            const tempMatrix = new THREE.Matrix4();
-            const tempPosition = new THREE.Vector3();
-            const tempRotation = new THREE.Quaternion();
-            const tempScale = new THREE.Vector3(0.2, 0.2, 0.2); // Match your scale
-
-            for (let i = 0; i < bulletInstances.length; i++) {
-                const rigidBody = bulletRef.current.at(i);
-
-                if (rigidBody) {
-                    // Get position and rotation from physics body
-                    const translation = rigidBody.translation();
-                    const rotation = rigidBody.rotation();
-
-                    tempPosition.set(translation.x, translation.y, translation.z);
-                    tempRotation.set(rotation.x, rotation.y, rotation.z, rotation.w);
-
-                    // Create transformation matrix
-                    tempMatrix.compose(tempPosition, tempRotation, tempScale);
-
-                    // Update both instanced meshes if they exist
-                    if (instancedMeshRef1.current) {
-                        instancedMeshRef1.current.setMatrixAt(i, tempMatrix);
-                    }
-                    if (instancedMeshRef2.current) {
-                        instancedMeshRef2.current.setMatrixAt(i, tempMatrix);
-                    }
-                }
-            }
-
-            // Mark instances as needing update
-            if (instancedMeshRef1.current) {
-                instancedMeshRef1.current.instanceMatrix.needsUpdate = true;
-            }
-            if (instancedMeshRef2.current) {
-                instancedMeshRef2.current.instanceMatrix.needsUpdate = true;
-            }
-        }
+        updateBallsInstances();
 
 
         const impulse = { x: 0, y: 0, z: 0 };
@@ -165,14 +125,54 @@ export default function Player() {
         camera.position.set(playerPos.x, playerPos.y + 1.7, playerPos.z);
     }
 
+    function updateBallsInstances() {
+        // Update basketball instance positions from physics bodies
+        if (bulletRef.current && bulletInstances.length > 0) {
+            const tempMatrix = new THREE.Matrix4();
+            const tempPosition = new THREE.Vector3();
+            const tempRotation = new THREE.Quaternion();
+            const tempScale = new THREE.Vector3(0.2, 0.2, 0.2); // Match your scale
+
+            for (let i = 0; i < bulletInstances.length; i++) {
+                const rigidBody = bulletRef.current.at(i);
+
+                if (rigidBody) {
+                    // Get position and rotation from physics body
+                    const translation = rigidBody.translation();
+                    const rotation = rigidBody.rotation();
+
+                    tempPosition.set(translation.x, translation.y, translation.z);
+                    tempRotation.set(rotation.x, rotation.y, rotation.z, rotation.w);
+
+                    // Create transformation matrix
+                    tempMatrix.compose(tempPosition, tempRotation, tempScale);
+
+                    // Update both instanced meshes if they exist
+                    if (instancedMeshRef1.current) {
+                        instancedMeshRef1.current.setMatrixAt(i, tempMatrix);
+                    }
+                    if (instancedMeshRef2.current) {
+                        instancedMeshRef2.current.setMatrixAt(i, tempMatrix);
+                    }
+                }
+            }
+
+            // Mark instances as needing update
+            if (instancedMeshRef1.current) {
+                instancedMeshRef1.current.instanceMatrix.needsUpdate = true;
+            }
+            if (instancedMeshRef2.current) {
+                instancedMeshRef2.current.instanceMatrix.needsUpdate = true;
+            }
+        }
+    }
+
     const jump = () => {
         const origin = playerRef.current.translation();
         origin.y -= 0.89;
         const direction = { x: 0, y: -1, z: 0 };
         const ray = new rapier.Ray(origin, direction);
         const hit = world.castRay(ray, 10, true);
-
-        console.log(origin)
 
         if (hit && hit.timeOfImpact <= 0.13) {
             playerRef.current.setLinvel({ x: 0, y: 10, z: 0 }, true);
@@ -202,7 +202,7 @@ export default function Player() {
         const newInstance = {
             key: Date.now() + Math.random(),
             position: spawnPos,
-            rotation: [0, 0, 0],
+            rotation: [Math.random() * 5, Math.random() * 2, Math.random() * 5],
             scale: [1, 1, 1],
             impulse: impulse,
         };
@@ -306,22 +306,27 @@ export default function Player() {
         const lastBulletInstance = bulletInstances[bulletInstances.length - 1];
         const lastBulletIndex = bulletInstances.length - 1;
 
-        setTimeout(() => {
+        const applyProps = setTimeout(() => {
             if (bulletRef.current.at(lastBulletIndex)) {
                 const rigidBody = bulletRef.current.at(lastBulletIndex).collider(0)
+
+                console.log(rigidBody)
+                // rigidBody.parent().applyImpulseAtPoint({ x: 0.1, y: 0.0, z: 0.1 }, { x: 0.0, y: 0.0, z: 0.0 }, true);
 
                 rigidBody.setRestitution(0.65);
                 rigidBody.parent().applyImpulse(lastBulletInstance.impulse, true);
             }
         }, 5)
 
-        // setTimeout(() => {
-        //   bulletRef.current
-        //     .at(lastBulletIndex)
-        //     .applyImpulse(lastBulletInstance.impulse, true);
+        setTimeout(() => {
+            if(bulletInstances.length > 2) {
+                bulletInstances.splice(0, 1)
+            }
+        }, 100)
 
-        //   console.log(bulletRef.current.at(lastBulletIndex));
-        // }, 5);
+        return (
+            clearTimeout(applyProps)
+        )
     }, [bulletInstances]);
 
     return (
@@ -356,7 +361,6 @@ export default function Player() {
                     angularDamping={1.5}
                     scale={1}
                     colliderNodes={[
-                        // <BallCollider args={[0.00195]} />
                         <BallCollider args={[0.21]} />
                     ]}
                 >
@@ -368,7 +372,7 @@ export default function Player() {
                     {/* First mesh layer with ref */}
                     <instancedMesh
                         ref={instancedMeshRef1}
-                        args={[basketballAssets.geometry1, basketballAssets.material1, 1000]}
+                        args={[basketballAssets.geometry1, basketballAssets.material1, bulletInstances.length]}
                         count={bulletInstances.length}
                         frustumCulled={false}
                         castShadow
@@ -378,7 +382,7 @@ export default function Player() {
                     {/* Second mesh layer with ref (if available) */}
                     <instancedMesh
                         ref={instancedMeshRef2}
-                        args={[basketballAssets.geometry2, basketballAssets.material2, 1000]}
+                        args={[basketballAssets.geometry2, basketballAssets.material2, bulletInstances.length]}
                         count={bulletInstances.length}
                         frustumCulled={false}
                         castShadow

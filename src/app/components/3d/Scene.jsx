@@ -3,6 +3,8 @@
 import {
   KeyboardControls,
   OrbitControls,
+  OrthographicCamera,
+  PerspectiveCamera,
 } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
@@ -10,6 +12,8 @@ import { Suspense, useMemo } from "react";
 import { Court } from "./basket-court/court";
 import Lights from "./basket-court/lights";
 import Player from "./basket-court/player";
+import { Cube } from "./resin-box/Cube";
+import CircleClickOffset from "./circle-click-offset/CircleClickOffset";
 
 export default function Scene() {
 
@@ -36,13 +40,14 @@ export default function Scene() {
   return (
     <KeyboardControls map={mapControls}>
       <Canvas
-        camera={[10, 0, 0]}
+        camera={[0,0,0]}
         onCreated={({ gl }) => {
           gl.domElement.setAttribute("tabIndex", "0"); // required for focus
           gl.domElement.focus();
         }}
       >
         <Suspense fallback={null}>
+          <OrthographicCamera aspect={window.innerHeight / window.innerWidth} fov={75} position={[0, 0, 0]} />
           <OrbitControls
             target={[0, 5, 0]}
             // enablePan={false}
@@ -62,14 +67,10 @@ export default function Scene() {
             {/* <Ground /> */}
             {/* <SnowballFight /> */}
 
-            <Court position={[0, 0, 0]} />
+            {/* <Court position={[0, 0, 0]} />
+            <Player /> */}
 
-            <Player />
-
-            <mesh scale={10} position={[0, 10, 0]} >
-              <torusGeometry args={[0.7, 2, 1.6, 16]} />
-              <meshBasicMaterial side={2} color="red" />
-            </mesh>
+            <CircleClickOffset />
           </Physics>
 
           {/* <Environment preset="studio" /> */}

@@ -275,7 +275,7 @@ export default function SnowballFight() {
 
   return (
     <group>
-      <PerspectiveCamera makeDefault aspect={1920 / 1080} fov={60} position={[0, 5, 0]} />
+      <PerspectiveCamera makeDefault aspect={1920 / 1080} fov={60} position={[0, 0, 0]} />
 
       {/* PLAYER */}
       <RigidBody

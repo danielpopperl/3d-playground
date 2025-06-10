@@ -10,6 +10,11 @@ const Scene = dynamic(() => import("./components/3d/Scene"), {
 export default function App() {
   return (
     <main className="w-full h-full bg-black">
+
+      <div className="text-white absolute z-[1002]">
+        OIII
+      </div>
+
       <div className="crosshair">
         <div className="crosshair-dot"></div>
       </div>
