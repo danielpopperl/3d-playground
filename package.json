@@ -2,11 +2,12 @@
   "name": "3d-card-playground",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
     "@react-three/drei": "^10.0.7",
@@ -15,16 +16,22 @@
     "@types/three": "^0.176.0",
     "html2canvas": "^1.4.1",
     "lil-gui": "^0.20.0",
-    "next": "15.3.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "three": "^0.176.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/postcss": "^4.1.8",
+    "@tailwindcss/vite": "^4.1.8",
+    "@types/react": "^19.1.7",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.5.2",
+    "autoprefixer": "^10.4.21",
     "eslint": "^9",
-    "eslint-config-next": "15.3.1",
-    "tailwindcss": "^4"
+    "postcss": "^8.5.4",
+    "tailwindcss": "^4.1.8",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
   }
 }
