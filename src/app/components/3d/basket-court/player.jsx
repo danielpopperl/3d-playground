@@ -333,7 +333,7 @@ export default function Player() {
         <group>
             <RigidBody
                 ref={playerRef}
-                position={[0, 10, 0]}
+                position={[0, 20, 0]}
                 scale={1}
                 type="dynamic"
                 colliders={false}

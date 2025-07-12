@@ -1,7 +1,7 @@
 import { useFrame } from "@react-three/fiber"
 import GUI from "lil-gui";
 import { useEffect, useRef } from "react";
-import { SpotLightHelper } from "three";
+import { PointLightHelper, SpotLightHelper } from "three";
 
 export default function Lights() {
     const light1Ref = useRef();
@@ -19,7 +19,7 @@ export default function Lights() {
             light1Ref.current.lookAt(0, 10, 0)
 
             if (!lightHelperRef.current && light1Ref.current) {
-                lightHelperRef.current = new SpotLightHelper(light1Ref.current);
+                lightHelperRef.current = new PointLightHelper(light1Ref.current);
                 // light1Ref.current.add(lightHelperRef.current);
             }
 
@@ -70,10 +70,21 @@ export default function Lights() {
     return (
         <>
             {/* LIGHTS */}
-            <ambientLight args={["white", 1]} />
+            <ambientLight args={["white", 1.3]} />
 
             <group>
-                <spotLight
+                <pointLight
+                    ref={light1Ref}
+                    color={"white"}
+                    position={[-6.65029, 10, 5.4]}      // em cima da quadra
+                    angle={0.9}        // abertura do cone
+                    penumbra={1}             // suavidade da borda
+                    intensity={150}              // força da luz
+                    castShadow
+                    shadow-mapSize-width={1024}
+                    shadow-mapSize-height={1024}
+                />
+                {/* <spotLight
                     ref={light1Ref}
                     color={"white"}
                     position={[-8.02706, 12.33, 5.74]}      // em cima da quadra
@@ -118,7 +129,7 @@ export default function Lights() {
                     castShadow
                     shadow-mapSize-width={1024}
                     shadow-mapSize-height={1024}
-                />
+                /> */}
             </group>
 
         </>

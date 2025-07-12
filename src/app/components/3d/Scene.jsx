@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Environment,
   KeyboardControls,
   OrbitControls,
   OrthographicCamera,
@@ -8,14 +9,15 @@ import {
 } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
-import { Suspense, useMemo } from "react";
-import { Court } from "./basket-court/court";
+import { Suspense, useMemo, useRef } from "react";
 import Lights from "./basket-court/lights";
-import Player from "./basket-court/player";
-import { Cube } from "./resin-box/Cube";
-import CircleClickOffset from "./circle-click-offset/CircleClickOffset";
+import { ReinhardToneMapping } from "three";
+import Holographic from "./shaders/Holographic";
+import HolographicV2 from "./shaders/HolographicV2";
+import SpiralHolo from "./shaders/SpiralHolo";
 
 export default function Scene() {
+  const cameraRef = useRef();
 
   const controls = {
     forward: "forward",
@@ -44,15 +46,19 @@ export default function Scene() {
         onCreated={({ gl }) => {
           gl.domElement.setAttribute("tabIndex", "0"); // required for focus
           gl.domElement.focus();
+          gl.toneMapping = ReinhardToneMapping; // Set tone mapping
+          gl.toneMappingExposure = 1; // Set exposure
         }}
       >
         <Suspense fallback={null}>
           <OrthographicCamera aspect={window.innerHeight / window.innerWidth} fov={75} position={[0, 0, 0]} />
+
           <OrbitControls
-            target={[0, 5, 0]}
-            // enablePan={false}
-            // enableZoom={false}
-            maxPolarAngle={Math.PI / 2}
+          ref={cameraRef}
+            // target={[0, 5, 0]}
+            enablePan={true}
+            enableZoom={true}
+            // maxPolarAngle={Math.PI / 2}
           />
 
           <Lights />
@@ -70,7 +76,9 @@ export default function Scene() {
             {/* <Court position={[0, 0, 0]} />
             <Player /> */}
 
-            <CircleClickOffset />
+            <SpiralHolo position={[0,0,0]} camera={cameraRef} />
+
+            {/* <CircleClickOffset /> */}
           </Physics>
 
           {/* <Environment preset="studio" /> */}
