@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from 'three';
 
-export default function HolographicV2(camera) {
+export default function HolographicV3(camera) {
   const meshRef = useRef();
 
   const texture = useTexture("/test4.jpg");
@@ -14,8 +14,8 @@ export default function HolographicV2(camera) {
       u_time: { value: 0 },
       u_resolution: { value: new THREE.Vector2(1.0,1.0) }, // Intensidade da distorção
       u_speed: { value: 1.0 },
-      u_wave_intensity: { value: 2.0 },
-      u_color_shift: { value: 1.0 }
+      u_wave_intensity: { value: 5.5 },
+      u_color_shift: { value: .7 }
     }),
     [texture]
   );
@@ -55,21 +55,21 @@ export default function HolographicV2(camera) {
         vec2 center = vec2(0.5, 0.5);
         
         // Create flowing wave patterns
-        float time = u_time * u_speed;
+        float time = u_time * u_speed * 0.3;
         
         // Multiple wave layers for complexity
-        float wave1 = sin(uv.x * 3.0 + time * 0.8) * 0.2;
-        float wave2 = cos(uv.y * 6.0 + time * 1.2) * 0.2;
-        float wave3 = sin((uv.x + uv.y) * 3.0 + time * 0.6) * 0.25;
+        float wave1 = sin(uv.x * 3.0 + time * 2.8);
+        float wave2 = cos(uv.y * 6.0 + time * 1.2) * 0.25;
+        float wave3 = sin((uv.x + uv.y) * 3.0 + time * 0.2) * 0.2;
         
         // Combine waves
-        float combined_wave = (wave1 + wave2 + wave3) * u_wave_intensity;
+        float combined_wave = (wave1 * wave2 + wave3) * u_wave_intensity;
         
         // Distance from center for radial effects
         float dist = distance(uv, center);
         
         // Create color flow
-        float color_time = time * 0.5 + combined_wave + dist * 2.0;
+        float color_time = time * 2.5 + combined_wave + dist * 2.0;
         color_time *= u_color_shift;
         
         // Generate base colors
@@ -84,13 +84,13 @@ export default function HolographicV2(camera) {
         vec3 final_color = mix(color1, color2, 0.0);
         final_color = mix(final_color, color3, 0.0);
         
-        // Add some brightness variation
+        // // Add some brightness variation
         float brightness = 1.75 + sin(combined_wave + time * 0.5) * 0.5;
         final_color *= brightness;
         
-        // Subtle vignette effect
-        float vignette = 1.0 - dist * 0.3;
-        final_color *= vignette;
+        // // Subtle vignette effect
+        // float vignette = 1.0 - dist * 0.3;
+        // final_color *= vignette;
         
         gl_FragColor = vec4(final_color, 1.0);
       }

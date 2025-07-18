@@ -15,6 +15,9 @@ import { ReinhardToneMapping } from "three";
 import Holographic from "./shaders/Holographic";
 import HolographicV2 from "./shaders/HolographicV2";
 import SpiralHolo from "./shaders/SpiralHolo";
+import HolographicV3 from "./shaders/HolographicV3";
+import HolographicV4 from "./shaders/HolographicV4";
+import Circle from "./shaders/Circle";
 
 export default function Scene() {
   const cameraRef = useRef();
@@ -76,7 +79,7 @@ export default function Scene() {
             {/* <Court position={[0, 0, 0]} />
             <Player /> */}
 
-            <SpiralHolo position={[0,0,0]} camera={cameraRef} />
+            <Circle position={[0,0,0]} camera={cameraRef} />
 
             {/* <CircleClickOffset /> */}
           </Physics>
