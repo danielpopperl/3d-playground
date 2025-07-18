@@ -1,23 +1,16 @@
 "use client";
 
 import {
-  Environment,
   KeyboardControls,
   OrbitControls,
-  OrthographicCamera,
-  PerspectiveCamera,
+  OrthographicCamera
 } from "@react-three/drei";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
 import { Suspense, useMemo, useRef } from "react";
-import Lights from "./basket-court/lights";
 import { ReinhardToneMapping } from "three";
-import Holographic from "./shaders/Holographic";
-import HolographicV2 from "./shaders/HolographicV2";
-import SpiralHolo from "./shaders/SpiralHolo";
-import HolographicV3 from "./shaders/HolographicV3";
+import Lights from "./basket-court/lights";
 import HolographicV4 from "./shaders/HolographicV4";
-import Circle from "./shaders/Circle";
 
 export default function Scene() {
   const cameraRef = useRef();
@@ -79,7 +72,7 @@ export default function Scene() {
             {/* <Court position={[0, 0, 0]} />
             <Player /> */}
 
-            <Circle position={[0,0,0]} camera={cameraRef} />
+            <HolographicV4 position={[0,0,0]} camera={cameraRef} />
 
             {/* <CircleClickOffset /> */}
           </Physics>
