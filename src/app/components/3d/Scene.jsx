@@ -3,14 +3,14 @@
 import {
   KeyboardControls,
   OrbitControls,
-  OrthographicCamera
+  OrthographicCamera,
 } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { Physics } from "@react-three/rapier";
 import { Suspense, useMemo, useRef } from "react";
 import { ReinhardToneMapping } from "three";
 import Lights from "./basket-court/lights";
-import HolographicV4 from "./shaders/HolographicV4";
+import { Tag } from "./card-embra/Tag";
 
 export default function Scene() {
   const cameraRef = useRef();
@@ -34,11 +34,10 @@ export default function Scene() {
     []
   );
 
-
   return (
     <KeyboardControls map={mapControls}>
       <Canvas
-        camera={[0,0,0]}
+        camera={[0, 0, 0]}
         onCreated={({ gl }) => {
           gl.domElement.setAttribute("tabIndex", "0"); // required for focus
           gl.domElement.focus();
@@ -47,13 +46,18 @@ export default function Scene() {
         }}
       >
         <Suspense fallback={null}>
-          <OrthographicCamera aspect={window.innerHeight / window.innerWidth} fov={75} position={[0, 0, 0]} />
+          <OrthographicCamera
+            aspect={window.innerHeight / window.innerWidth}
+            fov={75}
+            position={[0, 0, 0]}
+          />
 
           <OrbitControls
-          ref={cameraRef}
+            ref={cameraRef}
             // target={[0, 5, 0]}
-            enablePan={true}
+            enablePan={false}
             enableZoom={true}
+            enableRotate
             // maxPolarAngle={Math.PI / 2}
           />
 
@@ -72,7 +76,17 @@ export default function Scene() {
             {/* <Court position={[0, 0, 0]} />
             <Player /> */}
 
-            <HolographicV4 position={[0,0,0]} camera={cameraRef} />
+            <Tag />
+
+            {/* <mesh position={[0, 0, -3]} scale={2}>
+              <planeGeometry args={[2, 3]} />
+              <shaderMaterial
+                vertexShader={vertex}
+                fragmentShader={fragment}
+                side={2}
+                toneMapped={false}
+              />
+            </mesh> */}
 
             {/* <CircleClickOffset /> */}
           </Physics>
