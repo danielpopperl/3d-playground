@@ -6,19 +6,22 @@ import fragment from "!!raw-loader!../../../shaders/holographic/fragment.glsl";
 import vertex from "!!raw-loader!../../../shaders/holographic/vertex.glsl";
 import vertexGradient from "!!raw-loader!../../../shaders/gradient/vertex.glsl";
 import fragmentGradient from "!!raw-loader!../../../shaders/gradient/fragment.glsl";
-import { MeshPortalMaterial, RoundedBox, useGLTF } from "@react-three/drei";
+import { Html, MeshPortalMaterial, RoundedBox, Text, useGLTF, useTexture } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { Batman } from "../../../assets/3d/Batman";
-import {HandFilled} from "./HandFilled";
-import {HandStroke} from "./HandStroke";
+import { HandFilled } from "./HandFilled";
+import { HandStroke } from "./HandStroke";
 
 export function Tag(props) {
   const batmanRef = useRef();
   const tRef = useRef();
 
   const { nodes, materials } = useGLTF("/3d/card-embra/newCard.glb");
+  const iconTick = useTexture("/3d/card-embra/icon-tick.png");
+
+  console.log(iconTick)
 
   const uniforms = useMemo(
     () => ({
@@ -52,12 +55,24 @@ export function Tag(props) {
     // console.log(batmanRef.current.position.z);
 
     if (tRef.current && tRef.current.material) {
-      tRef.current.material.uniforms.u_time.value = props.camera.current.object.position.x * 3.0;
+      tRef.current.material.uniforms.u_time.value = (props.camera.current.object.position.x + props.camera.current.object.position.y) * 3.0;
     }
   });
 
   return (
     <group {...props} dispose={null}>
+      <group position={[-0.295, 0.093, 0.01]} renderOrder={1}>
+        <mesh position={[0, 0, 0.002]} >
+          <planeGeometry args={[0.035, 0.035]} />
+          <meshBasicMaterial map={iconTick} transparent side={THREE.FrontSide} depthTest={true}
+  depthWrite={false} />
+        </mesh>
+
+        <Text frustumCulled={false} color="black" fontSize={0.02} letterSpacing={-0.05} anchorY="middle" anchorX="left" lineHeight={0.1} rotation={[Math.PI * 2, 0, 0]} position={[0.02, 0.0015, 0]}>
+          Consultor Autorizado Embracon
+        </Text>
+      </group>
+
       <mesh
         castShadow
         receiveShadow
@@ -87,8 +102,8 @@ export function Tag(props) {
           <MeshPortalMaterial side={THREE.FrontSide}>
             <ambientLight intensity={20} />
 
-            <HandFilled scale={3.5} position={[0.2, -0.95, -0.5]} opacity={0.1} />
-            <HandFilled scale={3} position={[-0.35, -1, -0.3]} opacity={0.9}/>
+            <HandFilled scale={3.5} position={[0.2, -0.95, -0.5]} opacity={0.05} />
+            <HandFilled scale={3} position={[-0.35, -1, -0.3]} opacity={0.9} />
 
             <mesh position={[0, -1.5, -1]} scale={10}>
               <boxGeometry args={[10, 10, 0.1]} />
