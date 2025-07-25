@@ -76,7 +76,7 @@ export default function Scene() {
             {/* <Court position={[0, 0, 0]} />
             <Player /> */}
 
-            <Tag />
+            <Tag position={[0, -0.6, 0]} camera={cameraRef}/>
 
             {/* <mesh position={[0, 0, -3]} scale={2}>
               <planeGeometry args={[2, 3]} />

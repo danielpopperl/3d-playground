@@ -3,6 +3,7 @@ uniform vec2 u_resolution;
 uniform float u_speed;
 uniform float u_wave_intensity;
 uniform float u_color_shift;
+uniform sampler2D uTexture;
 
 varying vec2 vUv;
 
@@ -18,7 +19,7 @@ vec3 palette(float t) {
 
 void main() {
     vec2 uv = vUv;
-    vec2 center = uv - vec2(0.2, 0.3);
+    vec2 center = uv - vec2(0.5, 0.8);
 
         // Create flowing wave patterns
     float time = u_time * u_speed * 0.3;
@@ -46,8 +47,9 @@ void main() {
     final_color = mix(final_color, color3, 0.0);
 
         //brightness
-    float brightness = 1.80 + sin(combined_wave + time * 0.5) * 0.1;
+    float brightness = 1.90 + sin(combined_wave + time * 0.5) * 0.1;
     final_color *= brightness;
 
-    gl_FragColor = vec4(final_color, 1.0);
+
+    gl_FragColor = vec4(final_color, 1.9);
 }
