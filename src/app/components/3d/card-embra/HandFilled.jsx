@@ -10,10 +10,10 @@ export function HandFilled(props) {
   const { nodes, materials } = useGLTF('/3d/card-embra/hand-embra-fiiled.glb')
 
   const opacityMaterial = useMemo(() => {
-    const material = new THREE.MeshBasicMaterial({
+    const material = new THREE.MeshStandardMaterial({
       opacity: props.opacity,
       transparent: true,
-      color: materials.filled.color, // Copy properties you need
+      color: new THREE.Color("white"),
       map: materials.filled.map
     })
 

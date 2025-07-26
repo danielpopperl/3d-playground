@@ -6,9 +6,9 @@ import fragment from "!!raw-loader!../../../shaders/holographic/fragment.glsl";
 import vertex from "!!raw-loader!../../../shaders/holographic/vertex.glsl";
 import vertexGradient from "!!raw-loader!../../../shaders/gradient/vertex.glsl";
 import fragmentGradient from "!!raw-loader!../../../shaders/gradient/fragment.glsl";
-import { Html, MeshPortalMaterial, RoundedBox, Text, useGLTF, useTexture } from "@react-three/drei";
+import { Float, Html, MeshPortalMaterial, RoundedBox, Text, useGLTF, useTexture } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { Batman } from "../../../assets/3d/Batman";
 import { HandFilled } from "./HandFilled";
@@ -20,8 +20,10 @@ export function Tag(props) {
 
   const { nodes, materials } = useGLTF("/3d/card-embra/newCard.glb");
   const iconTick = useTexture("/3d/card-embra/icon-tick.png");
-
-  console.log(iconTick)
+  const maps = useTexture({
+    map: "/3d/card-embra/woman.png",
+    displacementMap: "/3d/card-embra/woman-depth.webp",
+  })
 
   const uniforms = useMemo(
     () => ({
@@ -49,6 +51,22 @@ export function Tag(props) {
     // if (tRef.current) console.log(tRef.current)
   }, [tRef.current])
 
+  useLayoutEffect(() => {
+    for (const key in maps) {
+      // maps[key].wrapS = maps[key].wrapT = THREE.RepeatWrapping; // Set wrap mode to repeat
+      // maps[key].repeat.set(1, 1); // Set repeat to 1 for both axes
+      maps[key].anisotropy = 8; // Set anisotropy for better quality
+      // maps[key].encoding = THREE.sRGBEncoding; // Set encoding for color maps
+    }
+
+    maps.displacementMap.flipY = true;
+    maps.displacementMap.colorSpace = THREE.NoColorSpace;
+    maps.displacementMap.minFilter = THREE.LinearFilter;
+    maps.displacementMap.magFilter = THREE.LinearFilter;
+    maps.displacementMap.generateMipmaps = true;
+    maps.displacementMap.wrapS = maps.displacementMap.wrapT = THREE.ClampToEdgeWrapping;
+  }, [maps])
+
   useFrame((state) => {
     const time = state.clock.getElapsedTime();
     // batmanRef.current.rotation.y = Math.cos(time * 0.5) / 2;
@@ -61,17 +79,6 @@ export function Tag(props) {
 
   return (
     <group {...props} dispose={null}>
-      <group position={[-0.295, 0.093, 0.01]} renderOrder={1}>
-        <mesh position={[0, 0, 0.002]} >
-          <planeGeometry args={[0.035, 0.035]} />
-          <meshBasicMaterial map={iconTick} transparent side={THREE.FrontSide} depthTest={true}
-  depthWrite={false} />
-        </mesh>
-
-        <Text frustumCulled={false} color="black" fontSize={0.02} letterSpacing={-0.05} anchorY="middle" anchorX="left" lineHeight={0.1} rotation={[Math.PI * 2, 0, 0]} position={[0.02, 0.0015, 0]}>
-          Consultor Autorizado Embracon
-        </Text>
-      </group>
 
       <mesh
         castShadow
@@ -82,13 +89,45 @@ export function Tag(props) {
         rotation={[Math.PI / 2, 0.03, 0]}
       />
 
+      <group position={[-0.295, 0.8, 0.01]}>
+        <Text 
+          color="white" 
+          maxWidth={0.1} 
+          fontSize={0.09} 
+          fontWeight={700} 
+          strokeWidth={0.001} 
+          strokeColor={"grey"} 
+          letterSpacing={-0.05} 
+          anchorY="middle" 
+          anchorX="left" 
+          lineHeight={1} 
+          material-toneMapped={false}  // Prevents tone mapping
+          rotation={[Math.PI * 2, 0, 0]} 
+          position={[0, 0, 0]}
+        >
+          Lilian Cavalcante
+        </Text>
+      </group>
+
+      <group position={[-0.295, 0.093, 0.01]} renderOrder={1}>
+        <mesh position={[0, 0, 0.002]} >
+          <planeGeometry args={[0.035, 0.035]} />
+          <meshBasicMaterial map={iconTick} transparent side={THREE.FrontSide} depthTest={true}
+            depthWrite={false} />
+        </mesh>
+
+        <Text frustumCulled={false} color="black" fontSize={0.02} letterSpacing={-0.05} anchorY="middle" anchorX="left" lineHeight={0.1} rotation={[Math.PI * 2, 0, 0]} position={[0.02, 0.0015, 0]}>
+          Consultor Autorizado Embracon
+        </Text>
+      </group>
+
       <mesh
         castShadow
         receiveShadow
         ref={tRef}
         geometry={nodes.bottom.geometry}
         material={shaderMaterial}
-        position={[-0.295, 0.093, 0.006]}
+        position={[-0.295, 0.093, 0.0085]}
         rotation={[Math.PI / 2, 0, 0]}
       />
 
@@ -100,16 +139,33 @@ export function Tag(props) {
           geometry={nodes.card.geometry}
         >
           <MeshPortalMaterial side={THREE.FrontSide}>
-            <ambientLight intensity={20} />
+            <ambientLight intensity={9  } />
 
-            <HandFilled scale={3.5} position={[0.2, -0.95, -0.5]} opacity={0.05} />
-            <HandFilled scale={3} position={[-0.35, -1, -0.3]} opacity={0.9} />
+<Float floatingRange={[0.1,0.2]}>
 
+            <HandFilled scale={3.5} position={[0.2, -1, -0.4]} opacity={0.02} />
+            <HandFilled scale={3} position={[-0.35, -1.1, -0.2]} opacity={1} />
+
+</Float>
             <mesh position={[0, -1.5, -1]} scale={10}>
               <boxGeometry args={[10, 10, 0.1]} />
               <shaderMaterial
                 vertexShader={vertexGradient}
                 fragmentShader={fragmentGradient}
+              />
+            </mesh>
+
+            <mesh position={[0, -0.28, -0.001]} scale={0.75}>
+              <planeGeometry args={[maps.map.image.width / maps.map.image.height, 1, 612, 612]} />
+              <meshPhysicalMaterial
+                {...maps}
+                side={2}
+                metalness={0.2}
+                displacementScale={0.105}
+                displacementBias={0.01}
+                flatShading={false}
+                transparent
+                opacity={1}
               />
             </mesh>
           </MeshPortalMaterial>

@@ -70,7 +70,7 @@ export default function Lights() {
     return (
         <>
             {/* LIGHTS */}
-            <ambientLight args={["white", 1.3]} />
+            {/* <ambientLight args={["white", 2.5]} /> */}
 
             <group>
                 <pointLight
@@ -78,7 +78,7 @@ export default function Lights() {
                     color={"white"}
                     position={[-6.65029, 10, 5.4]}      // em cima da quadra
                     angle={0.9}        // abertura do cone
-                    penumbra={1}             // suavidade da borda
+                    penumbra={0}             // suavidade da borda
                     intensity={150}              // força da luz
                     castShadow
                     shadow-mapSize-width={1024}
