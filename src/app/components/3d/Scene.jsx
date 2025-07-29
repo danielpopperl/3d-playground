@@ -1,16 +1,7 @@
 "use client";
 
-import {
-  KeyboardControls,
-  OrbitControls,
-  OrthographicCamera,
-} from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
-import { Physics } from "@react-three/rapier";
-import { Suspense, useMemo, useRef } from "react";
-import { ReinhardToneMapping } from "three";
-import Lights from "./basket-court/lights";
-import { Tag } from "./card-embra/Tag";
+import { useMemo, useRef } from "react";
+import CardEmbra from "./card-embra/CardEmbra";
 
 export default function Scene() {
   const cameraRef = useRef();
@@ -35,65 +26,67 @@ export default function Scene() {
   );
 
   return (
-    <KeyboardControls map={mapControls}>
-      <Canvas
-        camera={[0, 0, 0]}
-        onCreated={({ gl }) => {
-          gl.domElement.setAttribute("tabIndex", "0"); // required for focus
-          gl.domElement.focus();
-          gl.toneMapping = ReinhardToneMapping; // Set tone mapping
-          gl.toneMappingExposure = 1; // Set exposure
-        }}
-      >
-        <Suspense fallback={null}>
-          <OrthographicCamera
-            aspect={window.innerHeight / window.innerWidth}
-            fov={75}
-            position={[0, 0, 0]}
-          />
+    <CardEmbra position={[0, -0.6, 4]} />
 
-          <OrbitControls
-            ref={cameraRef}
-            // target={[0, 5, 0]}
-            enablePan={false}
-            enableZoom={true}
-            enableRotate
-            // maxPolarAngle={Math.PI / 2}
-          />
+    // <KeyboardControls map={mapControls}>
+    //   <Canvas
+    //     camera={[0, 0, 0]}
+    //     onCreated={({ gl }) => {
+    //       gl.domElement.setAttribute("tabIndex", "0"); // required for focus
+    //       gl.domElement.focus();
+    //       gl.toneMapping = ReinhardToneMapping; // Set tone mapping
+    //       gl.toneMappingExposure = 1; // Set exposure
+    //     }}
+    //   >
+    //     <Suspense fallback={null}>
+    //       <OrthographicCamera
+    //         aspect={window.innerHeight / window.innerWidth}
+    //         fov={75}
+    //         position={[0, 0, 0]}
+    //       />
 
-          <Lights />
+    //       <OrbitControls
+    //         ref={cameraRef}
+    //         target={[0, 0, 4]}
+    //         enablePan={false}
+    //         enableZoom={true}
+    //         enableRotate
+    //         // maxPolarAngle={Math.PI / 2}
+    //       />
 
-          <Physics
-            timeStep={"vary"}
-            gravity={[0, -45, 0]}
-            maxStabilizationIterations={10} // Increase for better stability
-            maxVelocityIterations={10} // Increase for better velocity resolution
-            debug
-          >
-            {/* <Ground /> */}
-            {/* <SnowballFight /> */}
+    //       <Lights />
 
-            {/* <Court position={[0, 0, 0]} />
-            <Player /> */}
+    //       <Physics
+    //         timeStep={"vary"}
+    //         gravity={[0, -45, 0]}
+    //         maxStabilizationIterations={10} // Increase for better stability
+    //         maxVelocityIterations={10} // Increase for better velocity resolution
+    //         debug
+    //       >
+    //         {/* <Ground /> */}
+    //         {/* <SnowballFight /> */}
 
-            <Tag position={[0, -0.6, 0]} camera={cameraRef}/>
+    //         {/* <Court position={[0, 0, 0]} />
+    //         <Player /> */}
 
-            {/* <mesh position={[0, 0, -3]} scale={2}>
-              <planeGeometry args={[2, 3]} />
-              <shaderMaterial
-                vertexShader={vertex}
-                fragmentShader={fragment}
-                side={2}
-                toneMapped={false}
-              />
-            </mesh> */}
+    //         <CardEmbra position={[0, -0.6, 4]} camera={cameraRef} />
 
-            {/* <CircleClickOffset /> */}
-          </Physics>
+    //         {/* <mesh position={[0, 0, -3]} scale={2}>
+    //           <planeGeometry args={[2, 3]} />
+    //           <shaderMaterial
+    //             vertexShader={vertex}
+    //             fragmentShader={fragment}
+    //             side={2}
+    //             toneMapped={false}
+    //           />
+    //         </mesh> */}
 
-          {/* <Environment preset="studio" /> */}
-        </Suspense>
-      </Canvas>
-    </KeyboardControls>
+    //         {/* <CircleClickOffset /> */}
+    //       </Physics>
+
+    //       {/* <Environment preset="studio" /> */}
+    //     </Suspense>
+    //   </Canvas>
+    // </KeyboardControls>
   );
 }
