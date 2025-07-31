@@ -46,8 +46,11 @@ void main() {
     final_color = mix(final_color, color3, 0.0);
 
         //brightness
-    float brightness = 1.80 + sin(combined_wave + time * 0.5) * 0.1;
+    float brightness = 1.9 + sin(combined_wave + time * 0.5) * 0.1;
     final_color *= brightness;
 
-    gl_FragColor = vec4(final_color, 0.80);
+    vec4 textureColor = texture2D(uTexture, uv);
+    textureColor.rgb += final_color;
+
+    gl_FragColor = vec4(textureColor.rgb, 0.95);
 }

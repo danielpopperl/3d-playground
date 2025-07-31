@@ -1,7 +1,7 @@
 varying vec2 vUv;
 
 vec3 srgbToLinear(vec3 c) {
-    return pow(c, vec3(2.0));
+    return pow(c, vec3(1.5));
 }
 
 void main() {

@@ -26,7 +26,13 @@ export default function Scene() {
   );
 
   return (
-    <CardEmbra position={[0, -0.6, 4]} />
+    <div className="relative flex h-screen w-full overflow-hidden">
+      <div className="absolute inset-0">
+        <CardEmbra position={[0, -0.6, 4]} />
+      </div>
+
+      <div className="text-white w-full h-full">TESTE</div>
+    </div>
 
     // <KeyboardControls map={mapControls}>
     //   <Canvas
